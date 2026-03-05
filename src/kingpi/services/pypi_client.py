@@ -1,3 +1,5 @@
+import re
+
 import httpx
 
 
@@ -14,7 +16,8 @@ class PyPIUpstreamError(Exception):
         super().__init__(f"PyPI returned {status_code} for package '{package}'")
 
 
-PYPI_BASE_URL = "https://pypi.python.org/pypi"
+PYPI_BASE_URL = "https://pypi.org/pypi"
+_VALID_PACKAGE_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 class PyPIClient:
@@ -22,6 +25,9 @@ class PyPIClient:
         self._client = client
 
     async def fetch_package_info(self, package: str) -> dict:
+        if not _VALID_PACKAGE_RE.match(package):
+            raise ValueError(f"Invalid package name: {package!r}")
+
         response = await self._client.get(f"{PYPI_BASE_URL}/{package}/json")
 
         if response.status_code == 200:
