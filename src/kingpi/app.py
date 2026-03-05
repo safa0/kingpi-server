@@ -26,6 +26,8 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
+from kingpi.api.events import router as events_router
+from kingpi.api.health import router as health_router
 from kingpi.config import Settings
 from kingpi.dependencies import get_settings, set_pypi_client
 from kingpi.services.pypi_client import PyPIClient
@@ -51,7 +53,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Future: register routers here with app.include_router(...)
+    app.include_router(health_router)
+    app.include_router(events_router, prefix="/api/v1")
 
     return app
 
