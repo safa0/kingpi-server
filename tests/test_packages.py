@@ -59,9 +59,11 @@ async def test_get_package_success(test_client):
     data = response.json()
     # Assert the response shape — not the exact values — so the test doesn't
     # break when the mock data changes. Structure > content for API contracts.
-    assert "name" in data
-    assert "info" in data
-    assert "releases" in data
+    assert data["name"] == "requests"
+    assert data["info"]["name"] == "requests"
+    assert data["info"]["version"] == "2.31.0"
+    assert isinstance(data["releases"], list)
+    assert "events" in data
 
 
 async def test_get_package_not_found_on_pypi(test_client):

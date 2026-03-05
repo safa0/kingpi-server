@@ -7,6 +7,7 @@ data from multiple sources (PyPI metadata + local event statistics).
 """
 
 from kingpi.schemas.event import EventType
+from kingpi.schemas.package import PackageEventStats, PackageInfo, PackageSummaryResponse
 from kingpi.services.event_store import EventStore
 from kingpi.services.pypi_client import PyPIClient
 
@@ -15,26 +16,32 @@ async def get_package_summary(
     name: str,
     pypi: PyPIClient,
     store: EventStore,
-) -> dict:
-    """Fetch PyPI metadata and combine with local event statistics.
-
-    Returns a dict with: name, info, releases (list), and events
-    (per event type: count + last timestamp).
-    """
+) -> PackageSummaryResponse:
+    """Fetch PyPI metadata and combine with local event statistics."""
     data = await pypi.fetch_package_info(name)
 
+    raw_info = data.get("info", {})
+    info = PackageInfo(
+        name=raw_info.get("name", name),
+        version=raw_info.get("version", ""),
+        summary=raw_info.get("summary", ""),
+        author=raw_info.get("author", ""),
+        license=raw_info.get("license", ""),
+        home_page=raw_info.get("home_page", ""),
+    )
+
     counts = await store.get_counts(name)
-    events = {}
+    events: dict[EventType, PackageEventStats] = {}
     for event_type in EventType:
         last = await store.get_last(name, event_type)
-        events[event_type] = {
-            "count": counts.get(event_type, 0),
-            "last": last.isoformat() if last else None,
-        }
+        events[event_type] = PackageEventStats(
+            count=counts.get(event_type, 0),
+            last=last,
+        )
 
-    return {
-        "name": name,
-        "info": data.get("info", {}),
-        "releases": list(data.get("releases", {}).keys()),
-        "events": events,
-    }
+    return PackageSummaryResponse(
+        name=name,
+        info=info,
+        releases=list(data.get("releases", {}).keys()),
+        events=events,
+    )

@@ -20,6 +20,8 @@ This module introduces two important design patterns:
 from datetime import datetime
 from typing import Protocol, TypedDict
 
+_EMPTY_ENTRY: "EventEntry" = {"count": 0, "last": None}
+
 
 class EventEntry(TypedDict):
     """Type-safe structure for per-(package, event_type) aggregate data."""
@@ -60,8 +62,9 @@ class InMemoryEventStore:
 
     async def record_event(self, package: str, event_type: str, timestamp: datetime) -> None:
         pkg = self._data.setdefault(package, {})
-        entry = pkg.get(event_type, EventEntry(count=0, last=None))
-        new_last = timestamp if (entry["last"] is None or timestamp > entry["last"]) else entry["last"]
+        entry = pkg.get(event_type, _EMPTY_ENTRY)
+        last = entry["last"]
+        new_last = max(filter(None, [last, timestamp]), default=timestamp)
         pkg[event_type] = EventEntry(count=entry["count"] + 1, last=new_last)
 
     async def get_counts(self, package: str) -> dict[str, int]:
@@ -69,7 +72,7 @@ class InMemoryEventStore:
         return {et: info["count"] for et, info in pkg.items()}
 
     async def get_last(self, package: str, event_type: str) -> datetime | None:
-        return self._data.get(package, {}).get(event_type, EventEntry(count=0, last=None))["last"]
+        return self._data.get(package, {}).get(event_type, _EMPTY_ENTRY)["last"]
 
     async def get_total(self, package: str, event_type: str) -> int:
-        return self._data.get(package, {}).get(event_type, EventEntry(count=0, last=None))["count"]
+        return self._data.get(package, {}).get(event_type, _EMPTY_ENTRY)["count"]

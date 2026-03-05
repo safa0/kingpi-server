@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from kingpi.dependencies import get_event_store, get_pypi_client
 from kingpi.schemas.event import EventType
+from kingpi.schemas.package import PackageSummaryResponse
 from kingpi.services.event_store import EventStore
 from kingpi.services.package_service import get_package_summary
 from kingpi.services.pypi_client import PackageNotFoundError, PyPIClient
@@ -17,7 +18,7 @@ from kingpi.services.pypi_client import PackageNotFoundError, PyPIClient
 router = APIRouter()
 
 
-@router.get("/package/{name}")
+@router.get("/package/{name}", response_model=PackageSummaryResponse)
 async def get_package(
     name: str,
     pypi: PyPIClient = Depends(get_pypi_client),
