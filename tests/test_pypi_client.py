@@ -66,3 +66,25 @@ async def test_fetch_package_info_server_error(pypi_client, mock_httpx_client):
 
     with pytest.raises(PyPIUpstreamError):
         await pypi_client.fetch_package_info("requests")
+
+
+@pytest.mark.parametrize(
+    "invalid_name",
+    [
+        "",
+        "../../../etc/passwd",
+        "foo bar",
+        "pkg?q=1",
+        "pkg#fragment",
+        ".leading-dot",
+        "-leading-dash",
+        "trailing-dot.",
+        "trailing-dash-",
+        "...",
+        "---",
+    ],
+)
+async def test_fetch_package_info_rejects_invalid_names(pypi_client, invalid_name):
+    """Invalid package names raise ValueError before any HTTP call."""
+    with pytest.raises(ValueError, match="Invalid package name"):
+        await pypi_client.fetch_package_info(invalid_name)

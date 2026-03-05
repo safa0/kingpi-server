@@ -20,7 +20,7 @@ def get_event_store() -> EventStore:
 _pypi_client: PyPIClient | None = None
 
 
-def set_pypi_client(client: PyPIClient) -> None:
+def set_pypi_client(client: PyPIClient | None) -> None:
     global _pypi_client
     _pypi_client = client
 

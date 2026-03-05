@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     ) as http_client:
         set_pypi_client(PyPIClient(client=http_client))
         yield
+        set_pypi_client(None)
 
 
 def create_app() -> FastAPI:

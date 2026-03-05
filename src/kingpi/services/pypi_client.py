@@ -17,7 +17,7 @@ class PyPIUpstreamError(Exception):
 
 
 PYPI_BASE_URL = "https://pypi.org/pypi"
-_VALID_PACKAGE_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+_VALID_PACKAGE_RE = re.compile(r"^[a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?$")
 
 
 class PyPIClient:
