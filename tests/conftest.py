@@ -33,6 +33,7 @@ from unittest.mock import AsyncMock
 from kingpi.app import create_app
 from kingpi.dependencies import get_event_store
 from kingpi.services.event_store import InMemoryEventStore
+from kingpi.services.pypi_client import PackageNotFoundError
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def mock_event_store():
     store = AsyncMock()
     store.record_event.return_value = None
     store.get_counts.return_value = {"install": 5, "uninstall": 1}
-    store.get_total.return_value = 5
+    store.get_total.side_effect = lambda pkg, et: 5 if pkg == "requests" else 0
     store.get_last.return_value = None
     return store
 
@@ -75,10 +76,16 @@ def mock_pypi_client():
     control. This mock returns canned data so tests are deterministic.
     """
     client = AsyncMock()
-    client.fetch_package_info.return_value = {
-        "info": {"name": "requests", "version": "2.31.0"},
-        "releases": {"2.31.0": []},
-    }
+
+    async def _fetch(package: str):
+        if package == "requests":
+            return {
+                "info": {"name": "requests", "version": "2.31.0"},
+                "releases": {"2.31.0": []},
+            }
+        raise PackageNotFoundError(package)
+
+    client.fetch_package_info.side_effect = _fetch
     return client
 
 

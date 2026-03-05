@@ -16,6 +16,7 @@ This module introduces two important design patterns:
    "what was the last install timestamp?" and supports audit trails.
    The tradeoff is higher storage usage vs. richer query capability.
 """
+import asyncio
 from datetime import datetime
 from typing import Protocol
 
@@ -39,13 +40,29 @@ class EventStore(Protocol):
 
 
 class InMemoryEventStore:
-    """Stub — tests should fail (RED phase).
+    """In-memory event store using plain dicts, protected by an asyncio lock."""
 
-    TDD note: This is intentionally empty so tests fail first (RED phase).
-    The GREEN phase will add the actual in-memory implementation using plain
-    Python dicts/lists — no database, no external dependencies, fast for tests.
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._data: dict[str, dict[str, dict]] = {}
 
-    An in-memory store is also useful in production for early-stage services
-    where persistence across restarts isn't required yet.
-    """
-    pass
+    async def record_event(self, package: str, event_type: str, timestamp: datetime) -> None:
+        async with self._lock:
+            pkg = self._data.setdefault(package, {})
+            entry = pkg.setdefault(event_type, {"count": 0, "last": None})
+            entry["count"] += 1
+            if entry["last"] is None or timestamp > entry["last"]:
+                entry["last"] = timestamp
+
+    async def get_counts(self, package: str) -> dict[str, int]:
+        async with self._lock:
+            pkg = self._data.get(package, {})
+            return {et: info["count"] for et, info in pkg.items()}
+
+    async def get_last(self, package: str, event_type: str) -> datetime | None:
+        async with self._lock:
+            return self._data.get(package, {}).get(event_type, {}).get("last")
+
+    async def get_total(self, package: str, event_type: str) -> int:
+        async with self._lock:
+            return self._data.get(package, {}).get(event_type, {}).get("count", 0)

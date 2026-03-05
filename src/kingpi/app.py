@@ -51,11 +51,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    from kingpi.api.health import router as health_router
     from kingpi.api.events import router as events_router
+    from kingpi.api.health import router as health_router
+    from kingpi.api.packages import router as packages_router
 
     app.include_router(health_router)
     app.include_router(events_router, prefix="/api/v1")
+    app.include_router(packages_router, prefix="/api/v1")
 
     return app
 
