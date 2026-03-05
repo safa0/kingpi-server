@@ -1,3 +1,22 @@
+"""
+Unit tests for InMemoryEventStore.
+
+These are pure unit tests — no HTTP, no mocks, no external services.
+They test the event store's business logic directly by calling its async
+methods and asserting on the results.
+
+Key patterns used here:
+- **Test classes**: Tests are grouped into classes (`TestRecordAndGetTotal`,
+  `TestGetCounts`, etc.) by behaviour. This is optional in pytest but
+  helps organize a large number of related tests. No `__init__` is needed.
+- **`event_store` fixture**: Comes from conftest.py. Each test method gets a
+  fresh `InMemoryEventStore()` instance — class grouping does NOT share state.
+- **`asyncio.gather`**: Used in concurrency tests to run many coroutines
+  simultaneously. This tests that the store handles concurrent writes correctly
+  (e.g., no race conditions when multiple writes happen at once).
+- **Helper function `ts()`**: Creates datetime objects concisely for test data.
+  Defined once, used throughout — avoids repeating `datetime(2024, 1, 1, ...)`.
+"""
 import asyncio
 from datetime import datetime, timezone
 
@@ -7,6 +26,11 @@ from kingpi.services.event_store import InMemoryEventStore
 
 
 def ts(hour: int = 0, minute: int = 0) -> datetime:
+    """Create a UTC datetime at a given hour/minute on 2024-01-01.
+
+    A test helper to keep test data concise. `ts(1)` is easier to read
+    than `datetime(2024, 1, 1, 1, 0, tzinfo=timezone.utc)`.
+    """
     return datetime(2024, 1, 1, hour, minute, tzinfo=timezone.utc)
 
 
