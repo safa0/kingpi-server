@@ -28,8 +28,3 @@ router = APIRouter()
 
 # Stub — no endpoints yet. Tests should fail (RED phase).
 # Route handlers will be added here in the GREEN phase.
-
-
-@router.get("/events")
-async def list_events():
-    return []
