@@ -51,7 +51,11 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Future: register routers here with app.include_router(...)
+    from kingpi.api.health import router as health_router
+    from kingpi.api.events import router as events_router
+
+    app.include_router(health_router)
+    app.include_router(events_router, prefix="/api/v1")
 
     return app
 
