@@ -97,10 +97,8 @@ async def test_get_package_event_last(test_client):
 async def test_get_package_event_total_no_events(test_client):
     """Returns {"total": 0} when no events recorded.
 
-    The mock returns `get_total.return_value = 5` for "requests" (see conftest.py).
-    For a different package name, the mock still returns 5 — but the real
-    implementation should return 0. This test validates the zero-case contract;
-    the GREEN phase will make the real store satisfy it.
+    The mock uses `side_effect` to return 5 for "requests" and 0 for any
+    other package (see conftest.py). This tests the zero-case contract.
     """
     response = await test_client.get("/api/v1/package/new-package/event/install/total")
     assert response.status_code == 200

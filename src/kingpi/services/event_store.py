@@ -16,9 +16,16 @@ This module introduces two important design patterns:
    "what was the last install timestamp?" and supports audit trails.
    The tradeoff is higher storage usage vs. richer query capability.
 """
-import asyncio
+
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, TypedDict
+
+
+class EventEntry(TypedDict):
+    """Type-safe structure for per-(package, event_type) aggregate data."""
+
+    count: int
+    last: datetime | None
 
 
 class EventStore(Protocol):
@@ -40,29 +47,29 @@ class EventStore(Protocol):
 
 
 class InMemoryEventStore:
-    """In-memory event store using plain dicts, protected by an asyncio lock."""
+    """In-memory event store using plain dicts.
+
+    No asyncio.Lock needed: with a single uvicorn worker, all async code
+    runs on one event loop thread. Dict operations here are synchronous
+    (no `await` between read and write), so no interleaving can occur.
+    Multiple workers don't share memory anyway (separate processes).
+    """
 
     def __init__(self) -> None:
-        self._lock = asyncio.Lock()
-        self._data: dict[str, dict[str, dict]] = {}
+        self._data: dict[str, dict[str, EventEntry]] = {}
 
     async def record_event(self, package: str, event_type: str, timestamp: datetime) -> None:
-        async with self._lock:
-            pkg = self._data.setdefault(package, {})
-            entry = pkg.setdefault(event_type, {"count": 0, "last": None})
-            entry["count"] += 1
-            if entry["last"] is None or timestamp > entry["last"]:
-                entry["last"] = timestamp
+        pkg = self._data.setdefault(package, {})
+        entry = pkg.get(event_type, EventEntry(count=0, last=None))
+        new_last = timestamp if (entry["last"] is None or timestamp > entry["last"]) else entry["last"]
+        pkg[event_type] = EventEntry(count=entry["count"] + 1, last=new_last)
 
     async def get_counts(self, package: str) -> dict[str, int]:
-        async with self._lock:
-            pkg = self._data.get(package, {})
-            return {et: info["count"] for et, info in pkg.items()}
+        pkg = self._data.get(package, {})
+        return {et: info["count"] for et, info in pkg.items()}
 
     async def get_last(self, package: str, event_type: str) -> datetime | None:
-        async with self._lock:
-            return self._data.get(package, {}).get(event_type, {}).get("last")
+        return self._data.get(package, {}).get(event_type, EventEntry(count=0, last=None))["last"]
 
     async def get_total(self, package: str, event_type: str) -> int:
-        async with self._lock:
-            return self._data.get(package, {}).get(event_type, {}).get("count", 0)
+        return self._data.get(package, {}).get(event_type, EventEntry(count=0, last=None))["count"]

@@ -26,6 +26,9 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
+from kingpi.api.events import router as events_router
+from kingpi.api.health import router as health_router
+from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
 from kingpi.dependencies import get_settings, set_pypi_client
 from kingpi.services.pypi_client import PyPIClient
@@ -44,6 +47,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app() -> FastAPI:
     """Build and return a configured FastAPI application instance."""
+    settings = get_settings()
+
     app = FastAPI(
         title="KingPi",
         description="Lightweight PyPI package analytics server",
@@ -51,13 +56,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    from kingpi.api.events import router as events_router
-    from kingpi.api.health import router as health_router
-    from kingpi.api.packages import router as packages_router
-
     app.include_router(health_router)
-    app.include_router(events_router, prefix="/api/v1")
-    app.include_router(packages_router, prefix="/api/v1")
+    app.include_router(events_router, prefix=settings.api_prefix)
+    app.include_router(packages_router, prefix=settings.api_prefix)
 
     return app
 
