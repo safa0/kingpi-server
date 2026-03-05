@@ -20,5 +20,17 @@ When creating PRs:
 4. Include test plan with TODOs
 5. Push with `-u` flag if new branch
 
+## File Operations
+
+When renaming or moving files, ALWAYS use `git mv` instead of `mv` to preserve git history:
+```
+# CORRECT
+git mv old_path new_path
+
+# WRONG
+mv old_path new_path
+git add new_path
+```
+
 > For the full development process (planning, TDD, code review) before git operations,
 > see [development-workflow.md](./development-workflow.md).
