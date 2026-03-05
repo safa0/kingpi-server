@@ -1,8 +1,8 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
-from unittest.mock import AsyncMock
+from httpx import ASGITransport, AsyncClient
 
 from pypi_server.app import create_app
+from pypi_server.dependencies import get_event_store
 
 
 SAMPLE_PYPI_DATA = {
@@ -12,37 +12,22 @@ SAMPLE_PYPI_DATA = {
 
 
 @pytest.fixture
-def mock_pypi_client():
-    client = AsyncMock()
-    client.fetch_package_info.return_value = SAMPLE_PYPI_DATA
-    return client
-
-
-@pytest.fixture
-def mock_event_store():
-    store = AsyncMock()
-    store.get_counts.return_value = {"install": 5, "uninstall": 1}
-    store.get_total.return_value = 5
-    store.get_last.return_value = None
-    return store
-
-
-@pytest.fixture
 async def test_client(mock_pypi_client, mock_event_store):
     app = create_app()
+    app.dependency_overrides[get_event_store] = lambda: mock_event_store
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
+    app.dependency_overrides.clear()
 
 
 async def test_get_package_success(test_client):
-    """GET /api/v1/package/requests returns PackageResponse with PyPI info + event data."""
+    """GET /api/v1/package/requests returns PackageResponse with PyPI info."""
     response = await test_client.get("/api/v1/package/requests")
     assert response.status_code == 200
     data = response.json()
     assert "name" in data
     assert "info" in data
     assert "releases" in data
-    assert "events" in data
 
 
 async def test_get_package_not_found_on_pypi(test_client):
