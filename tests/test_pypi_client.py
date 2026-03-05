@@ -66,3 +66,46 @@ async def test_fetch_package_info_server_error(pypi_client, mock_httpx_client):
 
     with pytest.raises(PyPIUpstreamError):
         await pypi_client.fetch_package_info("requests")
+
+
+@pytest.mark.parametrize(
+    "invalid_name",
+    [
+        "",
+        "../../../etc/passwd",
+        "foo bar",
+        "pkg?q=1",
+        "pkg#fragment",
+        ".leading-dot",
+        "-leading-dash",
+        "trailing-dot.",
+        "trailing-dash-",
+        "...",
+        "---",
+    ],
+)
+async def test_fetch_package_info_rejects_invalid_names(pypi_client, invalid_name):
+    """Invalid package names raise ValueError before any HTTP call."""
+    with pytest.raises(ValueError, match="Invalid package name"):
+        await pypi_client.fetch_package_info(invalid_name)
+
+
+@pytest.mark.integration
+async def test_fetch_real_package_from_pypi():
+    """Integration: fetch 'fastapi' from real pypi.org and verify response shape."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as http_client:
+        client = PyPIClient(client=http_client)
+        data = await client.fetch_package_info("text2digits")
+
+    assert data["info"]["name"] == "text2digits"
+    assert isinstance(data["info"]["version"], str)
+    assert len(data["releases"]) > 0
+
+
+@pytest.mark.integration
+async def test_fetch_nonexistent_package_from_pypi():
+    """Integration: confirm real pypi.org returns 404 for a nonexistent package."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as http_client:
+        client = PyPIClient(client=http_client)
+        with pytest.raises(PackageNotFoundError):
+            await client.fetch_package_info("zzz-nonexistent-pkg-12345678")

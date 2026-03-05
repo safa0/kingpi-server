@@ -17,5 +17,15 @@ def get_event_store() -> EventStore:
     return _event_store
 
 
+_pypi_client: PyPIClient | None = None
+
+
+def set_pypi_client(client: PyPIClient | None) -> None:
+    global _pypi_client
+    _pypi_client = client
+
+
 def get_pypi_client() -> PyPIClient:
-    raise NotImplementedError("PyPIClient requires lifespan wiring")
+    if _pypi_client is None:
+        raise RuntimeError("PyPIClient not initialized — is lifespan wired?")
+    return _pypi_client
