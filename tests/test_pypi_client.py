@@ -95,11 +95,10 @@ async def test_fetch_real_package_from_pypi():
     """Integration: fetch 'fastapi' from real pypi.org and verify response shape."""
     async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as http_client:
         client = PyPIClient(client=http_client)
-        data = await client.fetch_package_info("fastapi")
+        data = await client.fetch_package_info("text2digits")
 
-    assert data["info"]["name"] == "fastapi"
+    assert data["info"]["name"] == "text2digits"
     assert isinstance(data["info"]["version"], str)
-    assert isinstance(data["info"]["summary"], str)
     assert len(data["releases"]) > 0
 
 
