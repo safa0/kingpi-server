@@ -18,10 +18,10 @@ class PackageInfo(BaseModel):
 
     name: str
     version: str
-    summary: str = ""
-    author: str = ""
-    license: str = ""
-    home_page: str = ""
+    summary: str | None = None
+    author: str | None = None
+    license: str | None = None
+    home_page: str | None = None
 
 
 class PackageEventStats(BaseModel):
@@ -36,5 +36,7 @@ class PackageSummaryResponse(BaseModel):
 
     name: str
     info: PackageInfo
-    releases: list[str]
+    # Deprecated by PyPI — may be removed in a future API response.
+    # See: https://docs.pypi.org/api/json/
+    releases: list[str] = []
     events: dict[EventType, PackageEventStats]

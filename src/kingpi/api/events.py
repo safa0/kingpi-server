@@ -19,16 +19,25 @@ Key FastAPI concepts used here:
   instance into route handlers. This avoids global state and makes routes easy
   to test by overriding dependencies (see conftest.py).
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
-from kingpi.dependencies import get_event_store
+from kingpi.dependencies import get_event_store, get_pypi_client
 from kingpi.schemas.event import EventIn
 from kingpi.services.event_store import EventStore
+from kingpi.services.pypi_client import PackageNotFoundError, PyPIClient
 
 router = APIRouter()
 
 
 @router.post("/event", status_code=201)
-async def post_event(event: EventIn, store: EventStore = Depends(get_event_store)):
+async def post_event(
+    event: EventIn,
+    store: EventStore = Depends(get_event_store),
+    pypi: PyPIClient = Depends(get_pypi_client),
+):
+    try:
+        await pypi.fetch_package_info(event.package)
+    except PackageNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Package '{event.package}' not found on PyPI")
     await store.record_event(event.package, event.type, event.timestamp)
     return {"status": "accepted"}

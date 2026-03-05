@@ -15,7 +15,7 @@ them separate means:
 
 Pydantic patterns used here:
 - `BaseModel` — the foundation for all Pydantic schemas.
-- `Field(...)` — adds validation constraints (min_length, max_length, pattern).
+- `Field(...)` — adds validation constraints (min_length, max_length).
 - `StrEnum` — Python 3.11+ enum whose members are strings; Pydantic serializes
   them as their string values in JSON automatically.
 """
@@ -42,10 +42,7 @@ class EventIn(BaseModel):
     """
 
     timestamp: datetime
-    # Field() adds constraints beyond the type hint:
-    # - min_length/max_length: string length bounds
-    # - pattern: regex that the value must match (prevents injection attacks)
-    package: str = Field(min_length=1, max_length=200, pattern=r"^[a-zA-Z0-9._-]+$")
+    package: str = Field(min_length=1, max_length=200)
     type: EventType
 
 
