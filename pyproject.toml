@@ -27,6 +27,10 @@ dev = [
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: tests that hit real external services (deselected by default)",
+]
+addopts = "-m 'not integration'"
 
 [tool.ruff]
 target-version = "py312"
