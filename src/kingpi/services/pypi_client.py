@@ -14,11 +14,18 @@ class PyPIUpstreamError(Exception):
         super().__init__(f"PyPI returned {status_code} for package '{package}'")
 
 
-class PyPIClient:
-    """Stub — tests should fail (RED phase)."""
+PYPI_BASE_URL = "https://pypi.python.org/pypi"
 
+
+class PyPIClient:
     def __init__(self, client: httpx.AsyncClient) -> None:
         self._client = client
 
     async def fetch_package_info(self, package: str) -> dict:
-        raise NotImplementedError
+        response = await self._client.get(f"{PYPI_BASE_URL}/{package}/json")
+
+        if response.status_code == 200:
+            return response.json()
+        if response.status_code == 404:
+            raise PackageNotFoundError(package)
+        raise PyPIUpstreamError(package, response.status_code)
