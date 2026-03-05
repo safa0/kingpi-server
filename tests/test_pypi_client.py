@@ -2,7 +2,7 @@ import pytest
 import httpx
 from unittest.mock import AsyncMock, MagicMock
 
-from pypi_server.services.pypi_client import (
+from kingpi.services.pypi_client import (
     PackageNotFoundError,
     PyPIClient,
     PyPIUpstreamError,

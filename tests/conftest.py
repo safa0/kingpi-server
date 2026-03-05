@@ -2,9 +2,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from unittest.mock import AsyncMock
 
-from pypi_server.app import create_app
-from pypi_server.dependencies import get_event_store
-from pypi_server.services.event_store import InMemoryEventStore
+from kingpi.app import create_app
+from kingpi.dependencies import get_event_store
+from kingpi.services.event_store import InMemoryEventStore
 
 
 @pytest.fixture

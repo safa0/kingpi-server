@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pypi-server"
+name = "kingpi-server"
 version = "0.1.0"
-description = "A lightweight PyPI analytics server"
+description = "KingPi — a lightweight PyPI analytics proxy server"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115,<1",
@@ -33,4 +33,4 @@ target-version = "py312"
 line-length = 88
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/pypi_server"]
+packages = ["src/kingpi"]

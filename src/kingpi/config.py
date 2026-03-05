@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite+aiosqlite:///./pypi_server.db"
+    database_url: str = "sqlite+aiosqlite:///./kingpi.db"
     api_prefix: str = "/api/v1"
     debug: bool = False
 
-    model_config = {"env_prefix": "PYPI_SERVER_"}
+    model_config = {"env_prefix": "KINGPI_"}

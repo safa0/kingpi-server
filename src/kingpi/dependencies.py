@@ -1,8 +1,8 @@
 from functools import lru_cache
 
-from pypi_server.config import Settings
-from pypi_server.services.event_store import EventStore, InMemoryEventStore
-from pypi_server.services.pypi_client import PyPIClient
+from kingpi.config import Settings
+from kingpi.services.event_store import EventStore, InMemoryEventStore
+from kingpi.services.pypi_client import PyPIClient
 
 
 @lru_cache
