@@ -7,6 +7,3 @@ class Settings(BaseSettings):
     debug: bool = False
 
     model_config = {"env_prefix": "PYPI_SERVER_"}
-
-
-settings = Settings()

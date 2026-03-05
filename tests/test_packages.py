@@ -2,7 +2,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from pypi_server.app import create_app
-from pypi_server.dependencies import get_event_store
+from pypi_server.dependencies import get_event_store, get_pypi_client
 
 
 SAMPLE_PYPI_DATA = {
@@ -15,6 +15,7 @@ SAMPLE_PYPI_DATA = {
 async def test_client(mock_pypi_client, mock_event_store):
     app = create_app()
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
+    app.dependency_overrides[get_pypi_client] = lambda: mock_pypi_client
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     app.dependency_overrides.clear()
