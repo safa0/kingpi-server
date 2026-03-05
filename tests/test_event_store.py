@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from pypi_server.services.event_store import InMemoryEventStore
+from kingpi.services.event_store import InMemoryEventStore
 
 
 def ts(hour: int = 0, minute: int = 0) -> datetime:

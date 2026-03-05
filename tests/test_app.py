@@ -1,4 +1,4 @@
-from pypi_server.app import create_app
+from kingpi.app import create_app
 
 
 def test_app_has_api_v1_routes():

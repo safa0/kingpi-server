@@ -1,8 +1,8 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from pypi_server.app import create_app
-from pypi_server.dependencies import get_event_store, get_pypi_client
+from kingpi.app import create_app
+from kingpi.dependencies import get_event_store, get_pypi_client
 
 
 SAMPLE_PYPI_DATA = {
