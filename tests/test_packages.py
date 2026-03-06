@@ -12,7 +12,7 @@ overrides that isn't shared across the whole test suite.
 
 Why a local fixture instead of conftest.py?
 The global `client` fixture only overrides `get_event_store`. These tests also
-need to mock `get_pypi_client` so we don't make real HTTP calls to PyPI.
+need to mock `get_pypi_cache_client` so we don't make real HTTP calls to PyPI.
 Defining `test_client` locally keeps this setup self-contained.
 """
 import pytest
@@ -39,7 +39,7 @@ async def test_client(mock_pypi_client, mock_event_store):
     - `mock_event_store`: provides predictable event data
 
     Both are overridden via `dependency_overrides` so FastAPI injects the
-    mocks wherever `Depends(get_pypi_client)` or `Depends(get_event_store)`
+    mocks wherever `Depends(get_pypi_cache_client)` or `Depends(get_event_store)`
     appear in route handlers.
     """
     app = create_app()

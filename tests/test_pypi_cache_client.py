@@ -56,7 +56,9 @@ async def test_cache_miss_fetches_from_pypi(cached_client, mock_pypi, cache):
     result = await cached_client.fetch_package_info("requests")
     assert result == SAMPLE_DATA
     mock_pypi.fetch_package_info.assert_awaited_once_with("requests")
-    cache.set.assert_awaited_once()
+    cache.set.assert_awaited_once_with(
+        "pypi:package:requests", json.dumps(SAMPLE_DATA), 300
+    )
 
 
 async def test_cache_hit_skips_pypi(mock_pypi, cache):

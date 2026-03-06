@@ -95,7 +95,7 @@ async def client(mock_event_store, mock_pypi_client):
 
     This fixture:
     1. Creates the FastAPI app
-    2. Overrides the `get_event_store` and `get_pypi_client` dependencies
+    2. Overrides the `get_event_store` and `get_pypi_cache_client` dependencies
     3. Wraps the app in an httpx AsyncClient using ASGITransport (in-process)
     4. Yields the client for the test to use
     5. Cleans up dependency overrides after the test completes

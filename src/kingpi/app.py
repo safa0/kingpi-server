@@ -24,19 +24,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
+import redis.asyncio as aioredis
 from fastapi import FastAPI
 
 from kingpi.api.events import router as events_router
 from kingpi.api.health import router as health_router
 from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
-import redis.asyncio as aioredis
-
-from kingpi.dependencies import (
-    get_settings,
-    set_pypi_cache_client,
-    set_redis_client,
-)
+from kingpi.dependencies import get_settings, set_pypi_cache_client
 from kingpi.services.cache import RedisTTLCache
 from kingpi.services.pypi_cache_client import PyPICacheClient
 from kingpi.services.pypi_client import PyPIClient
@@ -49,7 +44,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         timeout=httpx.Timeout(settings.pypi_request_timeout_seconds),
     ) as http_client:
         redis_client = aioredis.from_url(settings.redis_url)
-        set_redis_client(redis_client)
         try:
             cache = RedisTTLCache(redis_client)
             cached_client = PyPICacheClient(
@@ -61,7 +55,6 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             yield
         finally:
             set_pypi_cache_client(None)
-            set_redis_client(None)
             await redis_client.aclose()
 
 
