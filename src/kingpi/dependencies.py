@@ -33,7 +33,8 @@ Benefits:
 """
 
 from functools import lru_cache
-from typing import Any
+
+import redis.asyncio as aioredis
 
 from kingpi.config import Settings
 from kingpi.services.event_store import EventStore, InMemoryEventStore
@@ -59,15 +60,15 @@ def get_event_store() -> EventStore:
     return _event_store
 
 
-_redis_client: Any = None
+_redis_client: aioredis.Redis | None = None
 
 
-def set_redis_client(client: Any) -> None:
+def set_redis_client(client: aioredis.Redis | None) -> None:
     global _redis_client
     _redis_client = client
 
 
-def get_redis_client() -> Any:
+def get_redis_client() -> aioredis.Redis:
     """Provide the shared Redis client — requires lifespan wiring."""
     if _redis_client is None:
         raise RuntimeError("Redis client not initialized — is lifespan wired?")

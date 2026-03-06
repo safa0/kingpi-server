@@ -16,7 +16,6 @@ import re
 from typing import Protocol
 
 from kingpi.services.cache import Cache
-from kingpi.services.pypi_client import PyPIClient
 
 
 class PackageInfoFetcher(Protocol):
@@ -40,7 +39,7 @@ class PyPICacheClient:
     Only successful responses are cached. Errors (404, 5xx) pass through.
     """
 
-    def __init__(self, client: PyPIClient, cache: Cache, ttl_seconds: int) -> None:
+    def __init__(self, client: PackageInfoFetcher, cache: Cache, ttl_seconds: int) -> None:
         self._client = client
         self._cache = cache
         self._ttl_seconds = ttl_seconds

@@ -92,6 +92,15 @@ async def test_404_not_cached(cached_client, mock_pypi):
     assert mock_pypi.fetch_package_info.await_count == 2
 
 
+async def test_404_not_cached_no_set(cached_client, mock_pypi, cache):
+    mock_pypi.fetch_package_info.side_effect = PackageNotFoundError("nope")
+
+    with pytest.raises(PackageNotFoundError):
+        await cached_client.fetch_package_info("nope")
+
+    cache.set.assert_not_awaited()
+
+
 async def test_upstream_error_not_cached(cached_client, mock_pypi):
     mock_pypi.fetch_package_info.side_effect = PyPIUpstreamError("pkg", 503)
 
@@ -103,3 +112,12 @@ async def test_upstream_error_not_cached(cached_client, mock_pypi):
         await cached_client.fetch_package_info("pkg")
 
     assert mock_pypi.fetch_package_info.await_count == 2
+
+
+async def test_upstream_error_not_cached_no_set(cached_client, mock_pypi, cache):
+    mock_pypi.fetch_package_info.side_effect = PyPIUpstreamError("pkg", 503)
+
+    with pytest.raises(PyPIUpstreamError):
+        await cached_client.fetch_package_info("pkg")
+
+    cache.set.assert_not_awaited()

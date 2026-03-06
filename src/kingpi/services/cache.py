@@ -10,8 +10,9 @@ The protocol stores serialized strings — callers handle serialization.
 from __future__ import annotations
 
 import logging
-from typing import Any, Protocol
+from typing import Protocol
 
+import redis.asyncio as aioredis
 from redis import RedisError
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ class RedisTTLCache:
     become no-ops. The system degrades to uncached calls rather than failing.
     """
 
-    def __init__(self, redis_client: Any) -> None:
+    def __init__(self, redis_client: aioredis.Redis) -> None:
         self._redis = redis_client
 
     async def get(self, key: str) -> str | None:
