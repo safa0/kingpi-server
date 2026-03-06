@@ -14,10 +14,6 @@ This means multiple FastAPI workers (separate processes) can safely call
 record_event() for the same package concurrently — the database serializes
 the updates. No application-level locking needed.
 
-Contrast with InMemoryEventStore, which is only safe within a single process
-because Python dicts aren't shared across processes (each gunicorn worker
-gets its own copy).
-
 WHY raw SQL dialect inserts instead of ORM session.merge()?
 ------------------------------------------------------------
 `session.merge()` does a SELECT then INSERT-or-UPDATE — two round trips and

@@ -48,9 +48,8 @@ def get_settings() -> Settings:
     return Settings()
 
 
-# The event store starts as None and is initialized during app lifespan.
-# This allows the lifespan to choose the correct implementation based on
-# the storage_backend config — either InMemoryEventStore or PostgresEventStore.
+# The event store starts as None and is initialized during app lifespan
+# with a PostgresEventStore instance.
 _event_store: EventStore | None = None
 
 

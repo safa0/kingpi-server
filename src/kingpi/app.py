@@ -34,7 +34,6 @@ from kingpi.config import Settings
 from kingpi.db.engine import Base, build_engine
 from kingpi.dependencies import get_settings, set_event_store, set_pypi_cache_client
 from kingpi.services.cache import RedisTTLCache
-from kingpi.services.event_store import InMemoryEventStore
 from kingpi.services.pg_event_store import PostgresEventStore
 from kingpi.services.pypi_cache_client import PyPICacheClient
 from kingpi.services.pypi_client import PyPIClient
@@ -51,29 +50,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = get_settings()
 
     # --- Event store setup ---
-    # Choose implementation based on config. The rest of the app doesn't
-    # know or care which one is active — both satisfy the EventStore protocol.
-    engine = None
-    if settings.storage_backend == "postgres":
-        if not settings.database_url.startswith(("postgresql", "postgres")):
-            raise ValueError(
-                f"storage_backend=postgres requires a PostgreSQL database_url, "
-                f"got: {settings.database_url!r}"
-            )
-        engine, session_factory = build_engine(
-            settings.database_url, echo=settings.debug
-        )
-        # Create tables if they don't exist. This is simpler than running
-        # a separate migration tool — Base.metadata knows about all ORM models
-        # (via their inheritance from Base), and create_all() is a no-op for
-        # tables that already exist in the database.
-        import kingpi.models.event  # noqa: F401 — registers model with Base.metadata
+    engine, session_factory = build_engine(
+        settings.database_url, echo=settings.debug
+    )
+    # Create tables if they don't exist. Base.metadata.create_all() is a
+    # no-op for tables that already exist in the database.
+    import kingpi.models.event  # noqa: F401 — registers model with Base.metadata
 
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        set_event_store(PostgresEventStore(session_factory))
-    else:
-        set_event_store(InMemoryEventStore())
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    set_event_store(PostgresEventStore(session_factory))
 
     # --- HTTP + Redis + PyPI cache setup ---
     async with httpx.AsyncClient(
@@ -93,8 +79,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             set_pypi_cache_client(None)
             set_event_store(None)
             await redis_client.aclose()
-            if engine is not None:
-                await engine.dispose()
+            await engine.dispose()
 
 
 def create_app() -> FastAPI:

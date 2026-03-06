@@ -2,17 +2,18 @@
 End-to-end tests exercising the full request lifecycle.
 
 Unlike unit/integration tests that mock dependencies, these tests wire
-the real InMemoryEventStore and only mock the PyPI client (to avoid
+a fake in-memory event store and only mock the PyPI client (to avoid
 network calls). This verifies that routes, services, schemas, and the
 event store work together correctly through realistic multi-step flows.
 """
+
+from datetime import datetime
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from kingpi.app import create_app
 from kingpi.dependencies import get_event_store, get_pypi_cache_client
-from kingpi.services.event_store import InMemoryEventStore
 from kingpi.services.pypi_client import PackageNotFoundError
 
 
@@ -42,6 +43,29 @@ PYPI_PACKAGES = {
 }
 
 
+class FakeEventStore:
+    """Simple in-memory event store for e2e tests."""
+
+    def __init__(self) -> None:
+        self._data: dict[str, dict[str, dict]] = {}
+
+    async def record_event(self, package: str, event_type: str, timestamp: datetime) -> None:
+        pkg = self._data.setdefault(package, {})
+        entry = pkg.get(event_type, {"count": 0, "last": None})
+        last = entry["last"]
+        new_last = max(filter(None, [last, timestamp]), default=timestamp)
+        pkg[event_type] = {"count": entry["count"] + 1, "last": new_last}
+
+    async def get_counts(self, package: str) -> dict[str, int]:
+        return {et: info["count"] for et, info in self._data.get(package, {}).items()}
+
+    async def get_last(self, package: str, event_type: str) -> datetime | None:
+        return self._data.get(package, {}).get(event_type, {"last": None})["last"]
+
+    async def get_total(self, package: str, event_type: str) -> int:
+        return self._data.get(package, {}).get(event_type, {"count": 0})["count"]
+
+
 class FakePyPIClient:
     """Fake PyPI client returning canned data without network calls."""
 
@@ -55,7 +79,7 @@ class FakePyPIClient:
 async def e2e_client():
     """HTTP client with real event store and fake PyPI client."""
     app = create_app()
-    store = InMemoryEventStore()
+    store = FakeEventStore()
     pypi = FakePyPIClient()
     app.dependency_overrides[get_event_store] = lambda: store
     app.dependency_overrides[get_pypi_cache_client] = lambda: pypi

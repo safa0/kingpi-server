@@ -21,24 +21,15 @@ HOW env vars map to fields:
   the environment variable `KINGPI_DATABASE_URL` (uppercased automatically).
 """
 
-from typing import Literal
-
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
     """Application configuration — all fields can be overridden via env vars."""
 
-    # Connection string for the async database engine.
-    # Default uses SQLite with aiosqlite for zero-config local development.
-    # For PostgreSQL: "postgresql+asyncpg://user:pass@localhost:5432/kingpi"
-    database_url: str = "sqlite+aiosqlite:///./kingpi.db"
-
-    # Which EventStore implementation to use: "memory" or "postgres".
-    # "memory" is fast and requires no external DB — perfect for local dev and tests.
-    # "postgres" uses the database_url above for persistent, multi-worker safe storage
-    # with atomic counter updates via INSERT ... ON CONFLICT DO UPDATE.
-    storage_backend: Literal["memory", "postgres"] = "memory"
+    # Connection string for the async PostgreSQL engine.
+    # Uses asyncpg as the async driver for SQLAlchemy.
+    database_url: str = "postgresql+asyncpg://kingpi:kingpi@localhost:5432/kingpi"
 
     # URL prefix for all API routes (enables versioned APIs like /api/v1/...).
     api_prefix: str = "/api/v1"
