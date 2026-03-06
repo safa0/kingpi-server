@@ -31,8 +31,9 @@ from httpx import ASGITransport, AsyncClient
 from unittest.mock import AsyncMock
 
 from kingpi.app import create_app
-from kingpi.dependencies import get_event_store
+from kingpi.dependencies import get_event_store, get_pypi_client
 from kingpi.services.event_store import InMemoryEventStore
+from kingpi.services.pypi_client import PackageNotFoundError
 
 
 @pytest.fixture
@@ -61,7 +62,7 @@ def mock_event_store():
     store = AsyncMock()
     store.record_event.return_value = None
     store.get_counts.return_value = {"install": 5, "uninstall": 1}
-    store.get_total.return_value = 5
+    store.get_total.side_effect = lambda pkg, et: 5 if pkg == "requests" else 0
     store.get_last.return_value = None
     return store
 
@@ -75,20 +76,26 @@ def mock_pypi_client():
     control. This mock returns canned data so tests are deterministic.
     """
     client = AsyncMock()
-    client.fetch_package_info.return_value = {
-        "info": {"name": "requests", "version": "2.31.0"},
-        "releases": {"2.31.0": []},
-    }
+
+    async def _fetch(package: str):
+        if package == "requests":
+            return {
+                "info": {"name": "requests", "version": "2.31.0"},
+                "releases": {"2.31.0": []},
+            }
+        raise PackageNotFoundError(package)
+
+    client.fetch_package_info.side_effect = _fetch
     return client
 
 
 @pytest.fixture
-async def client(mock_event_store):
+async def client(mock_event_store, mock_pypi_client):
     """Provide an async HTTP client wired to the FastAPI app for API tests.
 
     This fixture:
     1. Creates the FastAPI app
-    2. Overrides the `get_event_store` dependency with the mock store
+    2. Overrides the `get_event_store` and `get_pypi_client` dependencies
     3. Wraps the app in an httpx AsyncClient using ASGITransport (in-process)
     4. Yields the client for the test to use
     5. Cleans up dependency overrides after the test completes
@@ -99,9 +106,8 @@ async def client(mock_event_store):
     into other tests.
     """
     app = create_app()
-    # Override the real dependency with our mock — FastAPI will inject the
-    # mock wherever `Depends(get_event_store)` appears in route handlers.
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
+    app.dependency_overrides[get_pypi_client] = lambda: mock_pypi_client
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

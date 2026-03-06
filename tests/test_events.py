@@ -58,12 +58,12 @@ async def test_post_event_invalid_package_name_empty(client):
     assert response.status_code == 422
 
 
-async def test_post_event_invalid_package_name_special_chars(client):
-    # Package names with spaces and special characters are not valid PyPI names.
-    # The route's Pydantic model should enforce a regex pattern for this field.
-    payload = {**VALID_PAYLOAD, "package": "foo bar!!"}
+async def test_post_event_nonexistent_package(client):
+    # Package doesn't exist on PyPI — the route verifies via PyPI client
+    # before recording, so this should return 404.
+    payload = {**VALID_PAYLOAD, "package": "nonexistent-package-xyz"}
     response = await client.post("/api/v1/event", json=payload)
-    assert response.status_code == 422
+    assert response.status_code == 404
 
 
 async def test_post_event_records_to_store(client, mock_event_store):

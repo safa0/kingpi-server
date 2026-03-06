@@ -1,22 +1,42 @@
 """
-Pydantic schemas for PyPI package data responses.
+Pydantic schemas for package API responses.
 
-This schema mirrors the subset of PyPI's JSON API response that we expose
-to our clients. Using `dict[str, Any]` for `info` and `releases` keeps
-the schema flexible — PyPI's response structure is large and evolving,
-so we avoid tightly coupling to every field.
+Defines a stable API contract for package endpoints. We cherry-pick
+specific fields from PyPI's JSON API rather than proxying the full
+response — this decouples our API shape from PyPI's evolving schema.
 """
 
-from typing import Any
+from datetime import datetime
 
 from pydantic import BaseModel
 
+from kingpi.schemas.event import EventType
 
-class PackageResponse(BaseModel):
-    """Simplified representation of a PyPI package for API responses."""
+
+class PackageInfo(BaseModel):
+    """Curated subset of PyPI package metadata."""
 
     name: str
-    # `dict[str, Any]` accepts arbitrary nested JSON — useful when proxying
-    # third-party API data that we don't need to validate field-by-field.
-    info: dict[str, Any] = {}
-    releases: dict[str, Any] = {}
+    version: str
+    summary: str | None = None
+    author: str | None = None
+    license: str | None = None
+    home_page: str | None = None
+
+
+class PackageEventStats(BaseModel):
+    """Aggregate event statistics for a single event type."""
+
+    count: int = 0
+    last: datetime | None = None
+
+
+class PackageSummaryResponse(BaseModel):
+    """Response schema for GET /api/v1/package/{name}."""
+
+    name: str
+    info: PackageInfo
+    # Deprecated by PyPI — may be removed in a future API response.
+    # See: https://docs.pypi.org/api/json/
+    releases: list[str] = []
+    events: dict[EventType, PackageEventStats]
