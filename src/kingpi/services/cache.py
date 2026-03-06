@@ -1,10 +1,8 @@
 """
-Async cache protocol and implementations.
+Async cache protocol and Redis implementation.
 
-Defines a minimal `Cache` protocol for TTL-based key-value caching, with two
-implementations:
-- `RedisTTLCache`: production cache backed by Redis
-- `InMemoryTTLCache`: dict-based cache for tests and local dev
+Defines a minimal `Cache` protocol for TTL-based key-value caching and a
+`RedisTTLCache` production implementation backed by Redis.
 
 The protocol stores serialized strings — callers handle serialization.
 """
@@ -12,13 +10,9 @@ The protocol stores serialized strings — callers handle serialization.
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any, Protocol
 
-try:
-    from redis import RedisError
-except ImportError:
-    RedisError = OSError  # type: ignore[assignment,misc]
+from redis import RedisError
 
 logger = logging.getLogger(__name__)
 
@@ -60,41 +54,3 @@ class RedisTTLCache:
             await self._redis.delete(key)
         except (RedisError, OSError):
             logger.warning("Redis DELETE failed for key %s, skipping", key)
-
-
-class InMemoryTTLCache:
-    """Dict-based TTL cache for tests and single-worker local dev.
-
-    Entries expire based on monotonic clock timestamps. No background cleanup;
-    expired entries are evicted lazily on `get`. Max size is bounded by FIFO
-    eviction (oldest insertion order) when full, after sweeping expired entries.
-    """
-
-    def __init__(self, max_size: int = 1000) -> None:
-        self._max_size = max_size
-        self._store: dict[str, tuple[str, float]] = {}
-
-    async def get(self, key: str) -> str | None:
-        entry = self._store.get(key)
-        if entry is None:
-            return None
-        value, expires_at = entry
-        if time.monotonic() > expires_at:
-            del self._store[key]
-            return None
-        return value
-
-    async def set(self, key: str, value: str, ttl_seconds: int) -> None:
-        if len(self._store) >= self._max_size and key not in self._store:
-            now = time.monotonic()
-            expired = [k for k, (_, exp) in self._store.items() if now > exp]
-            if expired:
-                for k in expired:
-                    del self._store[k]
-            else:
-                oldest_key = next(iter(self._store))
-                del self._store[oldest_key]
-        self._store[key] = (value, time.monotonic() + ttl_seconds)
-
-    async def delete(self, key: str) -> None:
-        self._store.pop(key, None)

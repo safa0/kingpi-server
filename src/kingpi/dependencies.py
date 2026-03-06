@@ -33,6 +33,7 @@ Benefits:
 """
 
 from functools import lru_cache
+from typing import Any
 
 from kingpi.config import Settings
 from kingpi.services.event_store import EventStore, InMemoryEventStore
@@ -72,6 +73,21 @@ def get_pypi_client() -> PyPIClient:
     if _pypi_client is None:
         raise RuntimeError("PyPIClient not initialized — is lifespan wired?")
     return _pypi_client
+
+
+_redis_client: Any = None
+
+
+def set_redis_client(client: Any) -> None:
+    global _redis_client
+    _redis_client = client
+
+
+def get_redis_client() -> Any:
+    """Provide the shared Redis client — requires lifespan wiring."""
+    if _redis_client is None:
+        raise RuntimeError("Redis client not initialized — is lifespan wired?")
+    return _redis_client
 
 
 _pypi_cache_client: PyPICacheClient | None = None

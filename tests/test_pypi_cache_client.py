@@ -1,10 +1,10 @@
 """Unit tests for PyPICacheClient and normalize_package_name."""
 
+import json
 from unittest.mock import AsyncMock
 
 import pytest
 
-from kingpi.services.cache import InMemoryTTLCache
 from kingpi.services.pypi_client import PackageNotFoundError, PyPIUpstreamError
 from kingpi.services.pypi_cache_client import PyPICacheClient, normalize_package_name
 
@@ -42,7 +42,9 @@ def mock_pypi():
 
 @pytest.fixture
 def cache():
-    return InMemoryTTLCache()
+    mock = AsyncMock()
+    mock.get.return_value = None
+    return mock
 
 
 @pytest.fixture
@@ -50,26 +52,30 @@ def cached_client(mock_pypi, cache):
     return PyPICacheClient(client=mock_pypi, cache=cache, ttl_seconds=300)
 
 
-async def test_cache_miss_fetches_from_pypi(cached_client, mock_pypi):
+async def test_cache_miss_fetches_from_pypi(cached_client, mock_pypi, cache):
     result = await cached_client.fetch_package_info("requests")
     assert result == SAMPLE_DATA
     mock_pypi.fetch_package_info.assert_awaited_once_with("requests")
+    cache.set.assert_awaited_once()
 
 
-async def test_cache_hit_skips_pypi(cached_client, mock_pypi):
-    await cached_client.fetch_package_info("requests")
-    mock_pypi.fetch_package_info.reset_mock()
+async def test_cache_hit_skips_pypi(mock_pypi, cache):
+    cache.get.return_value = json.dumps(SAMPLE_DATA)
+    cached_client = PyPICacheClient(client=mock_pypi, cache=cache, ttl_seconds=300)
 
     result = await cached_client.fetch_package_info("requests")
     assert result == SAMPLE_DATA
     mock_pypi.fetch_package_info.assert_not_awaited()
 
 
-async def test_normalized_names_share_cache(cached_client, mock_pypi):
-    await cached_client.fetch_package_info("Flask-RESTful")
-    mock_pypi.fetch_package_info.reset_mock()
+async def test_normalized_names_share_cache(mock_pypi, cache):
+    cache.get.return_value = json.dumps(SAMPLE_DATA)
+    cached_client = PyPICacheClient(client=mock_pypi, cache=cache, ttl_seconds=300)
 
+    await cached_client.fetch_package_info("Flask-RESTful")
     await cached_client.fetch_package_info("flask_restful")
+
+    cache.get.assert_any_await("pypi:package:flask-restful")
     mock_pypi.fetch_package_info.assert_not_awaited()
 
 

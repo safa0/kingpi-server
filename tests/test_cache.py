@@ -1,73 +1,11 @@
-"""Unit tests for Cache protocol implementations."""
+"""Unit tests for RedisTTLCache."""
 
-import time
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 from redis import RedisError
 
-from kingpi.services.cache import InMemoryTTLCache, RedisTTLCache
-
-
-# --- InMemoryTTLCache ---
-
-
-async def test_in_memory_get_miss():
-    cache = InMemoryTTLCache()
-    assert await cache.get("nonexistent") is None
-
-
-async def test_in_memory_set_and_get():
-    cache = InMemoryTTLCache()
-    await cache.set("key1", "value1", ttl_seconds=60)
-    assert await cache.get("key1") == "value1"
-
-
-async def test_in_memory_delete():
-    cache = InMemoryTTLCache()
-    await cache.set("key1", "value1", ttl_seconds=60)
-    await cache.delete("key1")
-    assert await cache.get("key1") is None
-
-
-async def test_in_memory_delete_nonexistent():
-    cache = InMemoryTTLCache()
-    await cache.delete("nonexistent")  # should not raise
-
-
-async def test_in_memory_ttl_expiration():
-    cache = InMemoryTTLCache()
-    with patch("kingpi.services.cache.time") as mock_time:
-        mock_time.monotonic.return_value = 100.0
-        await cache.set("key1", "value1", ttl_seconds=10)
-
-        mock_time.monotonic.return_value = 109.0
-        assert await cache.get("key1") == "value1"
-
-        mock_time.monotonic.return_value = 111.0
-        assert await cache.get("key1") is None
-
-
-async def test_in_memory_max_size_evicts_oldest():
-    cache = InMemoryTTLCache(max_size=2)
-    await cache.set("a", "1", ttl_seconds=60)
-    await cache.set("b", "2", ttl_seconds=60)
-    await cache.set("c", "3", ttl_seconds=60)
-    assert await cache.get("a") is None
-    assert await cache.get("b") == "2"
-    assert await cache.get("c") == "3"
-
-
-async def test_in_memory_overwrite_existing_no_eviction():
-    cache = InMemoryTTLCache(max_size=2)
-    await cache.set("a", "1", ttl_seconds=60)
-    await cache.set("b", "2", ttl_seconds=60)
-    await cache.set("a", "updated", ttl_seconds=60)
-    assert await cache.get("a") == "updated"
-    assert await cache.get("b") == "2"
-
-
-# --- RedisTTLCache ---
+from kingpi.services.cache import RedisTTLCache
 
 
 @pytest.fixture
