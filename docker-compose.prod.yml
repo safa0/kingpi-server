@@ -1,0 +1,12 @@
+services:
+  app:
+    build:
+      context: .
+      target: prod
+    ports:
+      - "8000:8000"
+    environment:
+      - KINGPI_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy

@@ -1,0 +1,15 @@
+services:
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./src:/app/src
+    environment:
+      - KINGPI_REDIS_URL=redis://redis:6379/0
+      - KINGPI_DEBUG=true
+    depends_on:
+      redis:
+        condition: service_healthy
