@@ -38,7 +38,7 @@ class PackageEvent(Base):
     __tablename__ = "package_events"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    package: Mapped[str] = mapped_column(String(255), nullable=False)
+    package: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # timezone=True stores timestamps as TIMESTAMPTZ in PostgreSQL, ensuring

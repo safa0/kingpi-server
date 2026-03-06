@@ -29,8 +29,8 @@ class Base(DeclarativeBase):
     """Base class for all ORM models.
 
     SQLAlchemy's DeclarativeBase provides the `metadata` object that tracks
-    all table definitions. Alembic reads this metadata to auto-generate
-    migration scripts — so every model must inherit from this Base.
+    all table definitions. Every ORM model must inherit from this Base so
+    that `Base.metadata.create_all()` can discover and create its table.
     """
 
 

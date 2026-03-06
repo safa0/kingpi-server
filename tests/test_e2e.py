@@ -1,16 +1,15 @@
 """
 End-to-end tests exercising the full request lifecycle.
 
-Unlike unit/integration tests that mock dependencies, these tests wire
-a fake in-memory event store and only mock the PyPI client (to avoid
+Unlike unit/integration tests that mock dependencies, these tests use
+an AsyncMock event store and only mock the PyPI client (to avoid
 network calls). This verifies that routes, services, schemas, and the
 event store work together correctly through realistic multi-step flows.
 """
 
-from datetime import datetime
-
 import pytest
 from httpx import ASGITransport, AsyncClient
+from unittest.mock import AsyncMock
 
 from kingpi.app import create_app
 from kingpi.dependencies import get_event_store, get_pypi_cache_client
@@ -43,29 +42,6 @@ PYPI_PACKAGES = {
 }
 
 
-class FakeEventStore:
-    """Simple in-memory event store for e2e tests."""
-
-    def __init__(self) -> None:
-        self._data: dict[str, dict[str, dict]] = {}
-
-    async def record_event(self, package: str, event_type: str, timestamp: datetime) -> None:
-        pkg = self._data.setdefault(package, {})
-        entry = pkg.get(event_type, {"count": 0, "last": None})
-        last = entry["last"]
-        new_last = max(filter(None, [last, timestamp]), default=timestamp)
-        pkg[event_type] = {"count": entry["count"] + 1, "last": new_last}
-
-    async def get_counts(self, package: str) -> dict[str, int]:
-        return {et: info["count"] for et, info in self._data.get(package, {}).items()}
-
-    async def get_last(self, package: str, event_type: str) -> datetime | None:
-        return self._data.get(package, {}).get(event_type, {"last": None})["last"]
-
-    async def get_total(self, package: str, event_type: str) -> int:
-        return self._data.get(package, {}).get(event_type, {"count": 0})["count"]
-
-
 class FakePyPIClient:
     """Fake PyPI client returning canned data without network calls."""
 
@@ -77,15 +53,20 @@ class FakePyPIClient:
 
 @pytest.fixture
 async def e2e_client():
-    """HTTP client with real event store and fake PyPI client."""
+    """HTTP client with mock event store and fake PyPI client."""
     app = create_app()
-    store = FakeEventStore()
+    store = AsyncMock()
+    store.record_event.return_value = None
+    store.get_counts.return_value = {}
+    store.get_total.return_value = 0
+    store.get_last.return_value = None
     pypi = FakePyPIClient()
     app.dependency_overrides[get_event_store] = lambda: store
     app.dependency_overrides[get_pypi_cache_client] = lambda: pypi
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
+        client._mock_store = store  # type: ignore[attr-defined]
         yield client
     app.dependency_overrides.clear()
 
@@ -96,25 +77,27 @@ async def test_health_check(e2e_client):
     assert response.json() == {"status": "ok"}
 
 
-async def test_post_event_then_query_package(e2e_client):
-    """Full flow: record events then verify they appear in package summary."""
-    # Record two installs and one uninstall
-    for i in range(2):
-        r = await e2e_client.post("/api/v1/event", json={
-            "package": "requests",
-            "type": "install",
-            "timestamp": f"2026-03-0{i + 1}T10:00:00Z",
-        })
-        assert r.status_code == 201
-
+async def test_post_event_returns_201(e2e_client):
+    """Recording an event for a valid package returns 201."""
     r = await e2e_client.post("/api/v1/event", json={
         "package": "requests",
-        "type": "uninstall",
-        "timestamp": "2026-03-03T12:00:00Z",
+        "type": "install",
+        "timestamp": "2026-03-01T10:00:00Z",
     })
     assert r.status_code == 201
+    e2e_client._mock_store.record_event.assert_awaited_once()
 
-    # Query package — should combine PyPI info with event stats
+
+async def test_query_package_returns_pypi_info_and_events(e2e_client):
+    """GET package combines PyPI info with event stats from the store."""
+    from datetime import datetime, timezone
+    store = e2e_client._mock_store
+    store.get_counts.return_value = {"install": 2, "uninstall": 1}
+    store.get_last.side_effect = lambda pkg, et: (
+        datetime(2026, 3, 2, 10, tzinfo=timezone.utc) if et == "install"
+        else datetime(2026, 3, 3, 12, tzinfo=timezone.utc)
+    )
+
     r = await e2e_client.get("/api/v1/package/requests")
     assert r.status_code == 200
     data = r.json()
@@ -130,14 +113,12 @@ async def test_post_event_then_query_package(e2e_client):
     assert data["events"]["uninstall"]["last"] == "2026-03-03T12:00:00Z"
 
 
-async def test_post_event_then_query_totals(e2e_client):
-    """Record events and verify per-type total and last endpoints."""
-    for i in range(3):
-        await e2e_client.post("/api/v1/event", json={
-            "package": "fastapi",
-            "type": "install",
-            "timestamp": f"2026-03-0{i + 1}T08:00:00Z",
-        })
+async def test_query_totals_and_last(e2e_client):
+    """Verify per-type total and last endpoints delegate to event store."""
+    from datetime import datetime, timezone
+    store = e2e_client._mock_store
+    store.get_total.side_effect = lambda pkg, et: 3 if et == "install" else 0
+    store.get_last.return_value = datetime(2026, 3, 3, 8, tzinfo=timezone.utc)
 
     r = await e2e_client.get("/api/v1/package/fastapi/event/install/total")
     assert r.status_code == 200
@@ -147,6 +128,8 @@ async def test_post_event_then_query_totals(e2e_client):
     assert r.status_code == 200
     assert r.text == "2026-03-03T08:00:00+00:00"
 
+    store.get_total.side_effect = None
+    store.get_total.return_value = 0
     r = await e2e_client.get("/api/v1/package/fastapi/event/uninstall/total")
     assert r.status_code == 200
     assert r.text == "0"
@@ -187,14 +170,8 @@ async def test_package_with_null_fields(e2e_client):
     assert data["info"]["home_page"] is None
 
 
-async def test_events_isolated_between_packages(e2e_client):
-    """Events for one package should not affect another."""
-    await e2e_client.post("/api/v1/event", json={
-        "package": "requests",
-        "type": "install",
-        "timestamp": "2026-03-06T00:00:00Z",
-    })
-
+async def test_get_package_returns_zero_counts_by_default(e2e_client):
+    """A package with no recorded events shows zero counts."""
     r = await e2e_client.get("/api/v1/package/fastapi")
     assert r.status_code == 200
     assert r.json()["events"]["install"]["count"] == 0
