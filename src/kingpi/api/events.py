@@ -24,7 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from kingpi.dependencies import get_event_store, get_pypi_cache_client
 from kingpi.schemas.event import EventIn
 from kingpi.services.event_store import EventStore
-from kingpi.services.pypi_cache_client import PyPICacheClient
+from kingpi.services.pypi_cache_client import PackageInfoFetcher
 from kingpi.services.pypi_client import PackageNotFoundError
 
 router = APIRouter()
@@ -34,7 +34,7 @@ router = APIRouter()
 async def post_event(
     event: EventIn,
     store: EventStore = Depends(get_event_store),
-    pypi: PyPICacheClient = Depends(get_pypi_cache_client),
+    pypi: PackageInfoFetcher = Depends(get_pypi_cache_client),
 ):
     try:
         await pypi.fetch_package_info(event.package)

@@ -14,7 +14,7 @@ from kingpi.schemas.event import EventType
 from kingpi.schemas.package import PackageSummaryResponse
 from kingpi.services.event_store import EventStore
 from kingpi.services.package_service import get_package_summary
-from kingpi.services.pypi_cache_client import PyPICacheClient
+from kingpi.services.pypi_cache_client import PackageInfoFetcher
 from kingpi.services.pypi_client import PackageNotFoundError
 
 router = APIRouter()
@@ -23,7 +23,7 @@ router = APIRouter()
 @router.get("/package/{name}", response_model=PackageSummaryResponse)
 async def get_package(
     name: str,
-    pypi: PyPICacheClient = Depends(get_pypi_cache_client),
+    pypi: PackageInfoFetcher = Depends(get_pypi_cache_client),
     store: EventStore = Depends(get_event_store),
 ):
     try:
