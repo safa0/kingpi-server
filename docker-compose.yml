@@ -2,6 +2,8 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -15,6 +17,8 @@ services:
       POSTGRES_USER: kingpi
       POSTGRES_PASSWORD: kingpi
       POSTGRES_DB: kingpi
+    ports:
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,6 +26,24 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      KINGPI_ENV: ${KINGPI_ENV:-dev}
+      KINGPI_WORKERS: ${KINGPI_WORKERS:-4}
+      KINGPI_REDIS_URL: redis://redis:6379/0
+      KINGPI_DATABASE_URL: ${KINGPI_DATABASE_URL:-postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi}
+      KINGPI_DEBUG: ${KINGPI_DEBUG:-false}
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:
