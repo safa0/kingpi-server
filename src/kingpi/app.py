@@ -31,15 +31,36 @@ from kingpi.api.events import router as events_router
 from kingpi.api.health import router as health_router
 from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
-from kingpi.dependencies import get_settings, set_pypi_cache_client
+from kingpi.db.engine import build_engine
+from kingpi.dependencies import get_settings, set_event_store, set_pypi_cache_client
 from kingpi.services.cache import RedisTTLCache
+from kingpi.services.event_store import InMemoryEventStore
+from kingpi.services.pg_event_store import PostgresEventStore
 from kingpi.services.pypi_cache_client import PyPICacheClient
 from kingpi.services.pypi_client import PyPIClient
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Manage the lifecycle of shared resources (DB, Redis, HTTP client).
+
+    The lifespan context manager is the right place to initialize and tear
+    down resources that are shared across all requests. FastAPI calls this
+    once at startup (before first request) and once at shutdown.
+    """
     settings: Settings = get_settings()
+
+    # --- Event store setup ---
+    # Choose implementation based on config. The rest of the app doesn't
+    # know or care which one is active — both satisfy the EventStore protocol.
+    engine = None
+    if settings.storage_backend == "postgres":
+        engine, session_factory = build_engine(settings.database_url)
+        set_event_store(PostgresEventStore(session_factory))
+    else:
+        set_event_store(InMemoryEventStore())
+
+    # --- HTTP + Redis + PyPI cache setup ---
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(settings.pypi_request_timeout_seconds),
     ) as http_client:
@@ -55,7 +76,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             yield
         finally:
             set_pypi_cache_client(None)
+            set_event_store(None)
             await redis_client.aclose()
+            if engine is not None:
+                await engine.dispose()
 
 
 def create_app() -> FastAPI:
