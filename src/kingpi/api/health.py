@@ -1,3 +1,5 @@
+import asyncio
+import logging
 import time
 
 import redis.asyncio as aioredis
@@ -7,6 +9,10 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from kingpi.dependencies import get_redis_client, get_session_factory
+
+logger = logging.getLogger(__name__)
+
+_PROBE_TIMEOUT_S = 2.0
 
 router = APIRouter()
 
@@ -22,10 +28,14 @@ async def _check_db(
     start = time.monotonic()
     try:
         async with session_factory() as session:
-            await session.execute(text("SELECT 1"))
+            await asyncio.wait_for(
+                session.execute(text("SELECT 1")),
+                timeout=_PROBE_TIMEOUT_S,
+            )
         elapsed = (time.monotonic() - start) * 1000
         return {"status": "up", "response_time_ms": round(elapsed, 2)}
-    except Exception:
+    except Exception as exc:
+        logger.warning("DB readiness check failed: %s", exc)
         elapsed = (time.monotonic() - start) * 1000
         return {"status": "down", "response_time_ms": round(elapsed, 2)}
 
@@ -33,10 +43,14 @@ async def _check_db(
 async def _check_redis(redis_client: aioredis.Redis) -> dict:
     start = time.monotonic()
     try:
-        await redis_client.ping()
+        await asyncio.wait_for(
+            redis_client.ping(),
+            timeout=_PROBE_TIMEOUT_S,
+        )
         elapsed = (time.monotonic() - start) * 1000
         return {"status": "up", "response_time_ms": round(elapsed, 2)}
-    except Exception:
+    except Exception as exc:
+        logger.warning("Redis readiness check failed: %s", exc)
         elapsed = (time.monotonic() - start) * 1000
         return {"status": "down", "response_time_ms": round(elapsed, 2)}
 

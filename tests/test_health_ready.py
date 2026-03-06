@@ -1,5 +1,6 @@
 """Tests for the /health/ready deep health check endpoint."""
 
+import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -109,6 +110,37 @@ async def test_health_ready_both_down(health_client, mock_session_factory, mock_
     body = response.json()
     assert body["status"] == "unhealthy"
     assert body["dependencies"]["database"]["status"] == "down"
+    assert body["dependencies"]["redis"]["status"] == "down"
+
+
+async def test_health_ready_db_timeout(health_client, mock_session_factory):
+    """When DB hangs beyond timeout, report it as down."""
+
+    async def hang(*_a, **_kw):
+        await asyncio.sleep(10)
+
+    session = AsyncMock()
+    session.execute.side_effect = hang
+    ctx = MagicMock()
+    ctx.__aenter__ = AsyncMock(return_value=session)
+    ctx.__aexit__ = AsyncMock(return_value=False)
+    mock_session_factory.return_value = ctx
+
+    response = await health_client.get("/health/ready")
+    body = response.json()
+    assert body["dependencies"]["database"]["status"] == "down"
+
+
+async def test_health_ready_redis_timeout(health_client, mock_redis):
+    """When Redis hangs beyond timeout, report it as down."""
+
+    async def hang(*_a, **_kw):
+        await asyncio.sleep(10)
+
+    mock_redis.ping.side_effect = hang
+
+    response = await health_client.get("/health/ready")
+    body = response.json()
     assert body["dependencies"]["redis"]["status"] == "down"
 
 
