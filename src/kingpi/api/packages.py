@@ -9,12 +9,13 @@ business logic lives in the service layer (package_service.py).
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
-from kingpi.dependencies import get_event_store, get_pypi_client
+from kingpi.dependencies import get_event_store, get_pypi_cache_client
 from kingpi.schemas.event import EventType
 from kingpi.schemas.package import PackageSummaryResponse
 from kingpi.services.event_store import EventStore
 from kingpi.services.package_service import get_package_summary
-from kingpi.services.pypi_client import PackageNotFoundError, PyPIClient
+from kingpi.services.pypi_cache_client import PyPICacheClient
+from kingpi.services.pypi_client import PackageNotFoundError
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ router = APIRouter()
 @router.get("/package/{name}", response_model=PackageSummaryResponse)
 async def get_package(
     name: str,
-    pypi: PyPIClient = Depends(get_pypi_client),
+    pypi: PyPICacheClient = Depends(get_pypi_cache_client),
     store: EventStore = Depends(get_event_store),
 ):
     try:

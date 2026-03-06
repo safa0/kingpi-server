@@ -30,7 +30,9 @@ from kingpi.api.events import router as events_router
 from kingpi.api.health import router as health_router
 from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
-from kingpi.dependencies import get_settings, set_pypi_client
+from kingpi.dependencies import get_settings, set_pypi_cache_client, set_pypi_client
+from kingpi.services.cache import InMemoryTTLCache, RedisTTLCache
+from kingpi.services.pypi_cache_client import PyPICacheClient
 from kingpi.services.pypi_client import PyPIClient
 
 
@@ -40,9 +42,34 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with httpx.AsyncClient(
         timeout=httpx.Timeout(settings.pypi_request_timeout_seconds),
     ) as http_client:
-        set_pypi_client(PyPIClient(client=http_client))
+        pypi_client = PyPIClient(client=http_client)
+        set_pypi_client(pypi_client)
+
+        cache = _create_cache(settings)
+        cached_client = PyPICacheClient(
+            client=pypi_client,
+            cache=cache,
+            ttl_seconds=settings.pypi_cache_ttl_seconds,
+        )
+        set_pypi_cache_client(cached_client)
         yield
+        set_pypi_cache_client(None)
         set_pypi_client(None)
+
+
+def _create_cache(settings: Settings) -> InMemoryTTLCache | RedisTTLCache:
+    """Create the appropriate cache backend based on config."""
+    try:
+        import redis.asyncio as aioredis
+
+        return RedisTTLCache(aioredis.from_url(settings.redis_url))
+    except ImportError:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "redis package not installed, falling back to in-memory cache"
+        )
+        return InMemoryTTLCache()
 
 
 def create_app() -> FastAPI:

@@ -37,6 +37,7 @@ from functools import lru_cache
 from kingpi.config import Settings
 from kingpi.services.event_store import EventStore, InMemoryEventStore
 from kingpi.services.pypi_client import PyPIClient
+from kingpi.services.pypi_cache_client import PyPICacheClient
 
 
 # @lru_cache ensures Settings() is only instantiated once (singleton pattern).
@@ -67,7 +68,22 @@ def set_pypi_client(client: PyPIClient | None) -> None:
 
 
 def get_pypi_client() -> PyPIClient:
-    """Provide the PyPI HTTP client — requires lifespan wiring to initialize."""
+    """Provide the raw PyPI HTTP client — used internally by cache client."""
     if _pypi_client is None:
         raise RuntimeError("PyPIClient not initialized — is lifespan wired?")
     return _pypi_client
+
+
+_pypi_cache_client: PyPICacheClient | None = None
+
+
+def set_pypi_cache_client(client: PyPICacheClient | None) -> None:
+    global _pypi_cache_client
+    _pypi_cache_client = client
+
+
+def get_pypi_cache_client() -> PyPICacheClient:
+    """Provide the cached PyPI client — the default dependency for routes."""
+    if _pypi_cache_client is None:
+        raise RuntimeError("PyPICacheClient not initialized — is lifespan wired?")
+    return _pypi_cache_client

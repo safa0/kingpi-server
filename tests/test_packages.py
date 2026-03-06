@@ -19,7 +19,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from kingpi.app import create_app
-from kingpi.dependencies import get_event_store, get_pypi_client
+from kingpi.dependencies import get_event_store, get_pypi_cache_client
 
 
 # Realistic but minimal PyPI API response — used by the mock_pypi_client fixture
@@ -44,7 +44,7 @@ async def test_client(mock_pypi_client, mock_event_store):
     """
     app = create_app()
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
-    app.dependency_overrides[get_pypi_client] = lambda: mock_pypi_client
+    app.dependency_overrides[get_pypi_cache_client] = lambda: mock_pypi_client
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     # Always clear overrides after the test — prevents state leaking into

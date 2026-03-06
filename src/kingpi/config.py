@@ -37,6 +37,8 @@ class Settings(BaseSettings):
     # When True, enables detailed error responses and debug middleware.
     debug: bool = False
     pypi_request_timeout_seconds: float = 10.0
+    redis_url: str = "redis://localhost:6379/0"
+    pypi_cache_ttl_seconds: int = 300
 
     # `model_config` is Pydantic's way of configuring the model class itself
     # (not an instance). `env_prefix` tells BaseSettings to look for env vars
