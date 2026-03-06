@@ -44,10 +44,3 @@ class EventIn(BaseModel):
     timestamp: datetime
     package: str = Field(min_length=1, max_length=200)
     type: EventType
-
-
-class EventSummary(BaseModel):
-    """Schema for event summary responses (e.g., aggregated stats)."""
-
-    count: int = 0
-    last: datetime | None = None
