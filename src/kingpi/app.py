@@ -31,7 +31,7 @@ from kingpi.api.events import router as events_router
 from kingpi.api.health import router as health_router
 from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
-from kingpi.db.engine import build_engine
+from kingpi.db.engine import Base, build_engine
 from kingpi.dependencies import get_settings, set_event_store, set_pypi_cache_client
 from kingpi.services.cache import RedisTTLCache
 from kingpi.services.event_store import InMemoryEventStore
@@ -63,6 +63,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         engine, session_factory = build_engine(
             settings.database_url, echo=settings.debug
         )
+        # Create tables if they don't exist. This is simpler than running
+        # a separate migration tool — Base.metadata knows about all ORM models
+        # (via their inheritance from Base), and create_all() is a no-op for
+        # tables that already exist in the database.
+        import kingpi.models.event  # noqa: F401 — registers model with Base.metadata
+
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
         set_event_store(PostgresEventStore(session_factory))
     else:
         set_event_store(InMemoryEventStore())
