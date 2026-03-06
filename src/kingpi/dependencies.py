@@ -34,6 +34,9 @@ Benefits:
 
 from functools import lru_cache
 
+import redis.asyncio as aioredis
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from kingpi.config import Settings
 from kingpi.services.event_store import EventStore
 from kingpi.services.pypi_cache_client import PyPICacheClient
@@ -79,3 +82,35 @@ def get_pypi_cache_client() -> PyPICacheClient:
     if _pypi_cache_client is None:
         raise RuntimeError("PyPICacheClient not initialized — is lifespan wired?")
     return _pypi_cache_client
+
+
+_session_factory: async_sessionmaker[AsyncSession] | None = None
+
+
+def set_session_factory(factory: async_sessionmaker[AsyncSession] | None) -> None:
+    """Set the active session factory — called by the app lifespan."""
+    global _session_factory
+    _session_factory = factory
+
+
+def get_session_factory() -> async_sessionmaker[AsyncSession]:
+    """Provide the DB session factory dependency."""
+    if _session_factory is None:
+        raise RuntimeError("Session factory not initialized — is lifespan wired?")
+    return _session_factory
+
+
+_redis_client: aioredis.Redis | None = None
+
+
+def set_redis_client(client: aioredis.Redis | None) -> None:
+    """Set the active Redis client — called by the app lifespan."""
+    global _redis_client
+    _redis_client = client
+
+
+def get_redis_client() -> aioredis.Redis:
+    """Provide the Redis client dependency."""
+    if _redis_client is None:
+        raise RuntimeError("Redis client not initialized — is lifespan wired?")
+    return _redis_client

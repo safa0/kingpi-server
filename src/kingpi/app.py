@@ -33,7 +33,13 @@ from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
 import kingpi.models.event  # noqa: F401 — registers model with Base.metadata
 from kingpi.db.engine import Base, build_engine
-from kingpi.dependencies import get_settings, set_event_store, set_pypi_cache_client
+from kingpi.dependencies import (
+    get_settings,
+    set_event_store,
+    set_pypi_cache_client,
+    set_redis_client,
+    set_session_factory,
+)
 from kingpi.services.cache import RedisTTLCache
 from kingpi.services.pg_event_store import PostgresEventStore
 from kingpi.services.pypi_cache_client import PyPICacheClient
@@ -60,6 +66,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
         set_event_store(PostgresEventStore(session_factory))
+        set_session_factory(session_factory)
 
         # --- HTTP + Redis + PyPI cache setup ---
         async with httpx.AsyncClient(
@@ -67,6 +74,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ) as http_client:
             redis_client = aioredis.from_url(settings.redis_url)
             try:
+                set_redis_client(redis_client)
                 cache = RedisTTLCache(redis_client)
                 cached_client = PyPICacheClient(
                     client=PyPIClient(client=http_client),
@@ -77,9 +85,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 yield
             finally:
                 set_pypi_cache_client(None)
+                set_redis_client(None)
                 await redis_client.aclose()
     finally:
         set_event_store(None)
+        set_session_factory(None)
         await engine.dispose()
 
 
