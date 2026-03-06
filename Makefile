@@ -11,12 +11,12 @@ infra:
 	docker compose up postgres redis -d
 
 down:
-	docker compose down
+	docker compose --profile dev --profile dev-multi --profile prod down
 
 logs:
 	docker compose logs -f
 
 test:
-	docker compose --profile dev run --rm app-dev pytest
+	docker compose --profile dev run --rm app-dev sh -c "pip install -q '.[dev]' && pytest"
 
 .PHONY: dev dev-multi prod infra down logs test

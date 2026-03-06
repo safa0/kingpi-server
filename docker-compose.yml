@@ -1,3 +1,16 @@
+x-app-common: &app-common
+  build: .
+  ports:
+    - "8000:8000"
+  environment: &app-env
+    KINGPI_REDIS_URL: redis://redis:6379/0
+    KINGPI_DATABASE_URL: postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi
+  depends_on:
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
 services:
   redis:
     image: redis:7-alpine
@@ -28,54 +41,38 @@ services:
       retries: 5
 
   app-dev:
+    <<: *app-common
     profiles: [dev]
-    build: .
-    ports:
-      - "8000:8000"
     environment:
-      KINGPI_REDIS_URL: redis://redis:6379/0
-      KINGPI_DATABASE_URL: postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi
+      <<: *app-env
+      KINGPI_DEBUG: "true"
     volumes:
       - ./src:/app/src
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-    command: ["uvicorn", "kingpi.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "src"]
+    command: ["uvicorn", "kingpi.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "/app/src"]
 
   app-dev-multi:
+    <<: *app-common
     profiles: [dev-multi]
-    build: .
-    ports:
-      - "8000:8000"
     environment:
-      KINGPI_REDIS_URL: redis://redis:6379/0
-      KINGPI_DATABASE_URL: postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi
+      <<: *app-env
+      KINGPI_DEBUG: "true"
     volumes:
       - ./src:/app/src
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
     command: ["uvicorn", "kingpi.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "${KINGPI_WORKERS:-4}"]
 
   app-prod:
+    <<: *app-common
     profiles: [prod]
-    build: .
-    ports:
-      - "8000:8000"
     restart: unless-stopped
     environment:
       KINGPI_REDIS_URL: redis://redis:6379/0
-      KINGPI_DATABASE_URL: ${KINGPI_DATABASE_URL:-postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi}
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
+      KINGPI_DATABASE_URL: ${KINGPI_DATABASE_URL:?KINGPI_DATABASE_URL must be set for prod}
     command: ["gunicorn", "kingpi.app:app", "-w", "${KINGPI_WORKERS:-4}", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 volumes:
   pgdata:
