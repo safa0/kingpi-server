@@ -11,9 +11,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from kingpi.app import create_app
-from kingpi.dependencies import get_event_store, get_pypi_client
+from kingpi.dependencies import get_event_store, get_pypi_cache_client
 from kingpi.services.event_store import InMemoryEventStore
-from kingpi.services.pypi_client import PackageNotFoundError, PyPIClient
+from kingpi.services.pypi_client import PackageNotFoundError
 
 
 PYPI_PACKAGES = {
@@ -58,7 +58,7 @@ async def e2e_client():
     store = InMemoryEventStore()
     pypi = FakePyPIClient()
     app.dependency_overrides[get_event_store] = lambda: store
-    app.dependency_overrides[get_pypi_client] = lambda: pypi
+    app.dependency_overrides[get_pypi_cache_client] = lambda: pypi
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:

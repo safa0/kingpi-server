@@ -31,7 +31,7 @@ from httpx import ASGITransport, AsyncClient
 from unittest.mock import AsyncMock
 
 from kingpi.app import create_app
-from kingpi.dependencies import get_event_store, get_pypi_client
+from kingpi.dependencies import get_event_store, get_pypi_cache_client
 from kingpi.services.event_store import InMemoryEventStore
 from kingpi.services.pypi_client import PackageNotFoundError
 
@@ -95,7 +95,7 @@ async def client(mock_event_store, mock_pypi_client):
 
     This fixture:
     1. Creates the FastAPI app
-    2. Overrides the `get_event_store` and `get_pypi_client` dependencies
+    2. Overrides the `get_event_store` and `get_pypi_cache_client` dependencies
     3. Wraps the app in an httpx AsyncClient using ASGITransport (in-process)
     4. Yields the client for the test to use
     5. Cleans up dependency overrides after the test completes
@@ -107,7 +107,7 @@ async def client(mock_event_store, mock_pypi_client):
     """
     app = create_app()
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
-    app.dependency_overrides[get_pypi_client] = lambda: mock_pypi_client
+    app.dependency_overrides[get_pypi_cache_client] = lambda: mock_pypi_client
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

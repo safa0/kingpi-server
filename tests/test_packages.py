@@ -12,14 +12,14 @@ overrides that isn't shared across the whole test suite.
 
 Why a local fixture instead of conftest.py?
 The global `client` fixture only overrides `get_event_store`. These tests also
-need to mock `get_pypi_client` so we don't make real HTTP calls to PyPI.
+need to mock `get_pypi_cache_client` so we don't make real HTTP calls to PyPI.
 Defining `test_client` locally keeps this setup self-contained.
 """
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from kingpi.app import create_app
-from kingpi.dependencies import get_event_store, get_pypi_client
+from kingpi.dependencies import get_event_store, get_pypi_cache_client
 
 
 # Realistic but minimal PyPI API response — used by the mock_pypi_client fixture
@@ -39,12 +39,12 @@ async def test_client(mock_pypi_client, mock_event_store):
     - `mock_event_store`: provides predictable event data
 
     Both are overridden via `dependency_overrides` so FastAPI injects the
-    mocks wherever `Depends(get_pypi_client)` or `Depends(get_event_store)`
+    mocks wherever `Depends(get_pypi_cache_client)` or `Depends(get_event_store)`
     appear in route handlers.
     """
     app = create_app()
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
-    app.dependency_overrides[get_pypi_client] = lambda: mock_pypi_client
+    app.dependency_overrides[get_pypi_cache_client] = lambda: mock_pypi_client
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         yield client
     # Always clear overrides after the test — prevents state leaking into

@@ -9,12 +9,12 @@ data from multiple sources (PyPI metadata + local event statistics).
 from kingpi.schemas.event import EventType
 from kingpi.schemas.package import PackageEventStats, PackageSummaryResponse
 from kingpi.services.event_store import EventStore
-from kingpi.services.pypi_client import PyPIClient
+from kingpi.services.pypi_cache_client import PackageInfoFetcher
 
 
 async def get_package_summary(
     name: str,
-    pypi: PyPIClient,
+    pypi: PackageInfoFetcher,
     store: EventStore,
 ) -> PackageSummaryResponse:
     """Fetch PyPI metadata and combine with local event statistics."""
