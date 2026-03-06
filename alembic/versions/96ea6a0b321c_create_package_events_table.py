@@ -31,7 +31,7 @@ def upgrade() -> None:
         sa.Column("package", sa.String(255), nullable=False),
         sa.Column("event_type", sa.String(50), nullable=False),
         sa.Column("count", sa.Integer, nullable=False, server_default="0"),
-        sa.Column("last_timestamp", sa.DateTime, nullable=True),
+        sa.Column("last_timestamp", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint("package", "event_type", name="uq_package_event_type"),
     )
 

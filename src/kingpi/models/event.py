@@ -41,7 +41,12 @@ class PackageEvent(Base):
     package: Mapped[str] = mapped_column(String(255), nullable=False)
     event_type: Mapped[str] = mapped_column(String(50), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    last_timestamp: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # timezone=True stores timestamps as TIMESTAMPTZ in PostgreSQL, ensuring
+    # timezone info is preserved. Without this, UTC timestamps could be
+    # silently reinterpreted in the server's local timezone.
+    last_timestamp: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     __table_args__ = (
         UniqueConstraint("package", "event_type", name="uq_package_event_type"),

@@ -21,6 +21,8 @@ HOW env vars map to fields:
   the environment variable `KINGPI_DATABASE_URL` (uppercased automatically).
 """
 
+from typing import Literal
+
 from pydantic_settings import BaseSettings
 
 
@@ -36,7 +38,7 @@ class Settings(BaseSettings):
     # "memory" is fast and requires no external DB — perfect for local dev and tests.
     # "postgres" uses the database_url above for persistent, multi-worker safe storage
     # with atomic counter updates via INSERT ... ON CONFLICT DO UPDATE.
-    storage_backend: str = "memory"
+    storage_backend: Literal["memory", "postgres"] = "memory"
 
     # URL prefix for all API routes (enables versioned APIs like /api/v1/...).
     api_prefix: str = "/api/v1"

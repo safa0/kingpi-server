@@ -32,6 +32,14 @@ import kingpi.models.event  # noqa: F401 — registers PackageEvent with Base.me
 
 config = context.config
 
+# Override the ini-file URL with the env var if set — keeps credentials
+# out of source control. The ini placeholder is only used as a fallback
+# for local development without Docker.
+import os
+
+db_url = os.environ.get("KINGPI_DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+config.set_main_option("sqlalchemy.url", db_url)
+
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 

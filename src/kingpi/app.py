@@ -55,7 +55,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # know or care which one is active — both satisfy the EventStore protocol.
     engine = None
     if settings.storage_backend == "postgres":
-        engine, session_factory = build_engine(settings.database_url)
+        if not settings.database_url.startswith(("postgresql", "postgres")):
+            raise ValueError(
+                f"storage_backend=postgres requires a PostgreSQL database_url, "
+                f"got: {settings.database_url!r}"
+            )
+        engine, session_factory = build_engine(
+            settings.database_url, echo=settings.debug
+        )
         set_event_store(PostgresEventStore(session_factory))
     else:
         set_event_store(InMemoryEventStore())

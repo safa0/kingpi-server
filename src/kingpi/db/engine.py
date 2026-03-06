@@ -16,7 +16,12 @@ engine config in one place and lets us swap connection strings easily
 (e.g., test DB vs production DB).
 """
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -29,16 +34,19 @@ class Base(DeclarativeBase):
     """
 
 
-def build_engine(database_url: str) -> tuple[
-    "create_async_engine",
-    async_sessionmaker[AsyncSession],
-]:
+def build_engine(
+    database_url: str, *, echo: bool = False
+) -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
     """Create an async engine and session factory from a database URL.
 
     Returns a tuple of (engine, session_factory) so the caller can manage
     the engine lifecycle (dispose on shutdown) and use the session factory
     to create per-request sessions.
+
+    Args:
+        echo: When True, logs all SQL statements (useful for debugging,
+              should be False in production to avoid leaking query data).
     """
-    engine = create_async_engine(database_url, echo=False)
+    engine = create_async_engine(database_url, echo=echo)
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
     return engine, session_factory
