@@ -37,7 +37,6 @@ from typing import Any
 
 from kingpi.config import Settings
 from kingpi.services.event_store import EventStore, InMemoryEventStore
-from kingpi.services.pypi_client import PyPIClient
 from kingpi.services.pypi_cache_client import PyPICacheClient
 
 
@@ -58,21 +57,6 @@ _event_store = InMemoryEventStore()
 def get_event_store() -> EventStore:
     """Provide the event store dependency to route handlers."""
     return _event_store
-
-
-_pypi_client: PyPIClient | None = None
-
-
-def set_pypi_client(client: PyPIClient | None) -> None:
-    global _pypi_client
-    _pypi_client = client
-
-
-def get_pypi_client() -> PyPIClient:
-    """Provide the raw PyPI HTTP client — used internally by cache client."""
-    if _pypi_client is None:
-        raise RuntimeError("PyPIClient not initialized — is lifespan wired?")
-    return _pypi_client
 
 
 _redis_client: Any = None
