@@ -29,7 +29,14 @@ class Settings(BaseSettings):
 
     # Connection string for the async database engine.
     # Default uses SQLite with aiosqlite for zero-config local development.
+    # For PostgreSQL: "postgresql+asyncpg://user:pass@localhost:5432/kingpi"
     database_url: str = "sqlite+aiosqlite:///./kingpi.db"
+
+    # Which EventStore implementation to use: "memory" or "postgres".
+    # "memory" is fast and requires no external DB — perfect for local dev and tests.
+    # "postgres" uses the database_url above for persistent, multi-worker safe storage
+    # with atomic counter updates via INSERT ... ON CONFLICT DO UPDATE.
+    storage_backend: str = "memory"
 
     # URL prefix for all API routes (enables versioned APIs like /api/v1/...).
     api_prefix: str = "/api/v1"
