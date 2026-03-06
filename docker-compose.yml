@@ -27,16 +27,14 @@ services:
       timeout: 3s
       retries: 5
 
-  app:
+  app-dev:
+    profiles: [dev]
     build: .
     ports:
       - "8000:8000"
     environment:
-      KINGPI_ENV: ${KINGPI_ENV:-dev}
-      KINGPI_WORKERS: ${KINGPI_WORKERS:-4}
       KINGPI_REDIS_URL: redis://redis:6379/0
-      KINGPI_DATABASE_URL: ${KINGPI_DATABASE_URL:-postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi}
-      KINGPI_DEBUG: ${KINGPI_DEBUG:-false}
+      KINGPI_DATABASE_URL: postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi
     volumes:
       - ./src:/app/src
     depends_on:
@@ -44,6 +42,40 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    command: ["uvicorn", "kingpi.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "src"]
+
+  app-dev-multi:
+    profiles: [dev-multi]
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      KINGPI_REDIS_URL: redis://redis:6379/0
+      KINGPI_DATABASE_URL: postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi
+    volumes:
+      - ./src:/app/src
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: ["uvicorn", "kingpi.app:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "${KINGPI_WORKERS:-4}"]
+
+  app-prod:
+    profiles: [prod]
+    build: .
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      KINGPI_REDIS_URL: redis://redis:6379/0
+      KINGPI_DATABASE_URL: ${KINGPI_DATABASE_URL:-postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi}
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    command: ["gunicorn", "kingpi.app:app", "-w", "${KINGPI_WORKERS:-4}", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:8000"]
 
 volumes:
   pgdata:

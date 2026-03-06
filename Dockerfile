@@ -6,12 +6,8 @@ COPY pyproject.toml .
 RUN pip install --no-cache-dir . gunicorn ".[dev]"
 
 COPY src/ src/
-COPY entrypoint.sh .
-RUN chmod +x entrypoint.sh
 
 ENV PYTHONPATH=/app/src
 
 RUN adduser --disabled-password --no-create-home appuser
 USER appuser
-
-ENTRYPOINT ["./entrypoint.sh"]

@@ -1,11 +1,11 @@
 dev:
-	KINGPI_ENV=dev docker compose up --build
+	docker compose --profile dev up --build
 
 dev-multi:
-	KINGPI_ENV=dev-multi docker compose up --build
+	docker compose --profile dev-multi up --build
 
 prod:
-	KINGPI_ENV=prod docker compose up --build -d
+	docker compose --profile prod up --build -d
 
 infra:
 	docker compose up postgres redis -d
@@ -17,6 +17,6 @@ logs:
 	docker compose logs -f
 
 test:
-	docker compose run --rm app pytest
+	docker compose --profile dev run --rm app-dev pytest
 
 .PHONY: dev dev-multi prod infra down logs test
