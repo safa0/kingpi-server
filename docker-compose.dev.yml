@@ -16,7 +16,6 @@ services:
     environment:
       - KINGPI_REDIS_URL=redis://redis:6379/0
       - KINGPI_DATABASE_URL=postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi
-      - KINGPI_STORAGE_BACKEND=postgres
       - KINGPI_DEBUG=true
     depends_on:
       redis:

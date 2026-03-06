@@ -10,7 +10,6 @@ services:
       - KINGPI_REDIS_URL=redis://redis:6379/0
       # In production, supply DATABASE_URL via .env.prod (gitignored) or secrets manager.
       - KINGPI_DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://kingpi:kingpi@postgres:5432/kingpi}
-      - KINGPI_STORAGE_BACKEND=postgres
     depends_on:
       redis:
         condition: service_healthy
