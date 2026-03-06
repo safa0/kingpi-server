@@ -16,6 +16,10 @@ The event store is mocked so tests are fast and isolated from storage logic.
 """
 from datetime import datetime, timedelta, timezone
 
+import httpx
+
+from kingpi.services.pypi_client import PyPIUpstreamError
+
 
 # A valid payload used as a baseline — individual tests copy and mutate it
 # using dict unpacking: `{**VALID_PAYLOAD, "type": "download"}` creates a
@@ -82,3 +86,22 @@ async def test_post_event_future_timestamp(client):
     payload = {**VALID_PAYLOAD, "timestamp": future}
     response = await client.post("/api/v1/event", json=payload)
     assert response.status_code == 201
+
+
+async def test_post_event_pypi_upstream_error(client, mock_pypi_client):
+    mock_pypi_client.fetch_package_info.side_effect = PyPIUpstreamError("requests", 503)
+    response = await client.post("/api/v1/event", json=VALID_PAYLOAD)
+    assert response.status_code == 502
+
+
+async def test_post_event_pypi_timeout(client, mock_pypi_client):
+    mock_pypi_client.fetch_package_info.side_effect = httpx.TimeoutException("connection timed out")
+    response = await client.post("/api/v1/event", json=VALID_PAYLOAD)
+    assert response.status_code == 504
+
+
+async def test_post_event_invalid_package_name(client, mock_pypi_client):
+    mock_pypi_client.fetch_package_info.side_effect = ValueError("Invalid package name: '../evil'")
+    payload = {**VALID_PAYLOAD, "package": "../evil"}
+    response = await client.post("/api/v1/event", json=payload)
+    assert response.status_code == 400
