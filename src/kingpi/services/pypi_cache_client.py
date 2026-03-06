@@ -12,10 +12,13 @@ implement, allowing the service layer to depend on the abstraction.
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Protocol
 
 from kingpi.services.cache import Cache
+
+logger = logging.getLogger(__name__)
 
 
 class PackageInfoFetcher(Protocol):
@@ -49,7 +52,11 @@ class PyPICacheClient:
 
         cached = await self._cache.get(cache_key)
         if cached is not None:
-            return json.loads(cached)
+            try:
+                return json.loads(cached)
+            except json.JSONDecodeError:
+                logger.warning("Corrupt cache entry for key %s, treating as miss", cache_key)
+                await self._cache.delete(cache_key)
 
         data = await self._client.fetch_package_info(package)
         await self._cache.set(cache_key, json.dumps(data), self._ttl_seconds)
