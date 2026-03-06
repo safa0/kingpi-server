@@ -13,7 +13,7 @@ graph LR
     Client -->|HTTP| KingPi
     KingPi -->|JSON API| PyPI
     KingPi -->|asyncpg| PG
-    KingPi -->|aioredis| Redis
+    KingPi -->|redis.asyncio| Redis
 ```
 
 ## Internal Layer Architecture
@@ -23,7 +23,7 @@ graph TD
     subgraph API["API Layer (routes)"]
         health["health.py<br/>GET /health"]
         events["events.py<br/>POST /api/v1/event"]
-        packages["packages.py<br/>GET /api/v1/package/{name}"]
+        packages["packages.py<br/>GET /api/v1/package/{name}<br/>GET .../event/{type}/total<br/>GET .../event/{type}/last"]
     end
 
     subgraph Services["Service Layer (business logic)"]
@@ -43,6 +43,7 @@ graph TD
     events --> cache_client
     events --> event_store
     packages --> pkg_svc
+    packages --> event_store
     pkg_svc --> cache_client
     pkg_svc --> event_store
     cache_client --> pypi_client
@@ -68,14 +69,14 @@ sequenceDiagram
     Note over R: Pydantic validates EventIn
 
     R->>P: fetch_package_info(package)
-    P->>Redis: GET pypi:package:{name}
+    P->>Redis: GET pypi:package:{normalized_name}
     alt Cache HIT
         Redis-->>P: cached JSON
     else Cache MISS
         Redis-->>P: None
         P->>PyPI: GET /pypi/{name}/json
         PyPI-->>P: package metadata
-        P->>Redis: SET key (TTL 300s)
+        P->>Redis: SET key (TTL)
     end
     P-->>R: package info
 
@@ -104,14 +105,14 @@ sequenceDiagram
     R->>Svc: get_package_summary(name)
 
     Svc->>P: fetch_package_info(name)
-    P->>Redis: GET pypi:package:{name}
+    P->>Redis: GET pypi:package:{normalized_name}
     alt Cache HIT
         Redis-->>P: cached JSON
     else Cache MISS
         Redis-->>P: None
         P->>PyPI: GET /pypi/{name}/json
         PyPI-->>P: metadata
-        P->>Redis: SET key (TTL 300s)
+        P->>Redis: SET key (TTL)
     end
     P-->>Svc: package info
 
@@ -152,7 +153,7 @@ graph TD
         pg["PostgresEventStore"]
         http["httpx.AsyncClient"]
         pypi["PyPIClient"]
-        redis["aioredis.from_url()"]
+        redis["redis.asyncio.from_url()"]
         cache["RedisTTLCache"]
         cached["PyPICacheClient"]
 
