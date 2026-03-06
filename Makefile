@@ -1,19 +1,22 @@
 dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+	docker compose --profile dev up --build
+
+dev-multi:
+	docker compose --profile dev-multi up --build
 
 prod:
-	docker compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+	docker compose --profile prod up --build -d
 
 infra:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up postgres redis -d
+	docker compose up postgres redis -d
 
 down:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.prod.yml down
+	docker compose --profile dev --profile dev-multi --profile prod down
 
 logs:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml -f docker-compose.prod.yml logs -f
+	docker compose logs -f
 
 test:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm app pytest
+	docker compose --profile dev run --rm app-dev sh -c "pip install -q '.[dev]' && pytest"
 
-.PHONY: dev prod infra down logs test
+.PHONY: dev dev-multi prod infra down logs test
