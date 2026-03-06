@@ -31,31 +31,56 @@ from kingpi.api.events import router as events_router
 from kingpi.api.health import router as health_router
 from kingpi.api.packages import router as packages_router
 from kingpi.config import Settings
-from kingpi.dependencies import get_settings, set_pypi_cache_client
+import kingpi.models.event  # noqa: F401 — registers model with Base.metadata
+from kingpi.db.engine import Base, build_engine
+from kingpi.dependencies import get_settings, set_event_store, set_pypi_cache_client
 from kingpi.services.cache import RedisTTLCache
+from kingpi.services.pg_event_store import PostgresEventStore
 from kingpi.services.pypi_cache_client import PyPICacheClient
 from kingpi.services.pypi_client import PyPIClient
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Manage the lifecycle of shared resources (DB, Redis, HTTP client).
+
+    The lifespan context manager is the right place to initialize and tear
+    down resources that are shared across all requests. FastAPI calls this
+    once at startup (before first request) and once at shutdown.
+    """
     settings: Settings = get_settings()
-    async with httpx.AsyncClient(
-        timeout=httpx.Timeout(settings.pypi_request_timeout_seconds),
-    ) as http_client:
-        redis_client = aioredis.from_url(settings.redis_url)
-        try:
-            cache = RedisTTLCache(redis_client)
-            cached_client = PyPICacheClient(
-                client=PyPIClient(client=http_client),
-                cache=cache,
-                ttl_seconds=settings.pypi_cache_ttl_seconds,
-            )
-            set_pypi_cache_client(cached_client)
-            yield
-        finally:
-            set_pypi_cache_client(None)
-            await redis_client.aclose()
+
+    # --- Event store setup ---
+    engine, session_factory = build_engine(
+        settings.database_url, echo=settings.debug
+    )
+    try:
+        # Create tables if they don't exist. Base.metadata.create_all() is a
+        # no-op for tables that already exist in the database.
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        set_event_store(PostgresEventStore(session_factory))
+
+        # --- HTTP + Redis + PyPI cache setup ---
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(settings.pypi_request_timeout_seconds),
+        ) as http_client:
+            redis_client = aioredis.from_url(settings.redis_url)
+            try:
+                cache = RedisTTLCache(redis_client)
+                cached_client = PyPICacheClient(
+                    client=PyPIClient(client=http_client),
+                    cache=cache,
+                    ttl_seconds=settings.pypi_cache_ttl_seconds,
+                )
+                set_pypi_cache_client(cached_client)
+                yield
+            finally:
+                set_pypi_cache_client(None)
+                await redis_client.aclose()
+    finally:
+        set_event_store(None)
+        await engine.dispose()
 
 
 def create_app() -> FastAPI:

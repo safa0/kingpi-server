@@ -32,19 +32,7 @@ from unittest.mock import AsyncMock
 
 from kingpi.app import create_app
 from kingpi.dependencies import get_event_store, get_pypi_cache_client
-from kingpi.services.event_store import InMemoryEventStore
 from kingpi.services.pypi_client import PackageNotFoundError
-
-
-@pytest.fixture
-def event_store():
-    """Provide a fresh InMemoryEventStore for each test.
-
-    Using the real implementation (not a mock) — suitable for unit tests
-    that exercise the store's actual logic. Each test gets a new instance
-    so state doesn't leak between tests.
-    """
-    return InMemoryEventStore()
 
 
 @pytest.fixture

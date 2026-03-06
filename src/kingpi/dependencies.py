@@ -35,7 +35,7 @@ Benefits:
 from functools import lru_cache
 
 from kingpi.config import Settings
-from kingpi.services.event_store import EventStore, InMemoryEventStore
+from kingpi.services.event_store import EventStore
 from kingpi.services.pypi_cache_client import PyPICacheClient
 
 
@@ -48,13 +48,21 @@ def get_settings() -> Settings:
     return Settings()
 
 
-# Module-level instance — acts as an in-memory singleton for the event store.
-# In production, this would be replaced by a database-backed implementation.
-_event_store = InMemoryEventStore()
+# The event store starts as None and is initialized during app lifespan
+# with a PostgresEventStore instance.
+_event_store: EventStore | None = None
+
+
+def set_event_store(store: EventStore | None) -> None:
+    """Set the active event store — called by the app lifespan."""
+    global _event_store
+    _event_store = store
 
 
 def get_event_store() -> EventStore:
     """Provide the event store dependency to route handlers."""
+    if _event_store is None:
+        raise RuntimeError("EventStore not initialized — is lifespan wired?")
     return _event_store
 
 

@@ -8,8 +8,12 @@ services:
     restart: unless-stopped
     environment:
       - KINGPI_REDIS_URL=redis://redis:6379/0
+      # In production, supply DATABASE_URL via .env.prod (gitignored) or secrets manager.
+      - KINGPI_DATABASE_URL=${DATABASE_URL:?DATABASE_URL must be set}
     depends_on:
       redis:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

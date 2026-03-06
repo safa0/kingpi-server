@@ -27,9 +27,9 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """Application configuration — all fields can be overridden via env vars."""
 
-    # Connection string for the async database engine.
-    # Default uses SQLite with aiosqlite for zero-config local development.
-    database_url: str = "sqlite+aiosqlite:///./kingpi.db"
+    # Connection string for the async PostgreSQL engine.
+    # Uses asyncpg as the async driver for SQLAlchemy.
+    database_url: str = "postgresql+asyncpg://kingpi:kingpi@localhost:5432/kingpi"
 
     # URL prefix for all API routes (enables versioned APIs like /api/v1/...).
     api_prefix: str = "/api/v1"
