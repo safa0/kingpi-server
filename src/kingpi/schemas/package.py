@@ -1,27 +1,17 @@
 """
 Pydantic schemas for package API responses.
 
-Defines a stable API contract for package endpoints. We cherry-pick
-specific fields from PyPI's JSON API rather than proxying the full
-response — this decouples our API shape from PyPI's evolving schema.
+The ``info`` field passes through the full PyPI JSON API ``info`` dict
+so clients get every field PyPI provides. We use ``dict[str, Any]`` to
+avoid coupling to PyPI's evolving schema.
 """
 
 from datetime import datetime
+from typing import Any
 
 from pydantic import BaseModel
 
 from kingpi.schemas.event import EventType
-
-
-class PackageInfo(BaseModel):
-    """Curated subset of PyPI package metadata."""
-
-    name: str
-    version: str
-    summary: str | None = None
-    author: str | None = None
-    license: str | None = None
-    home_page: str | None = None
 
 
 class PackageEventStats(BaseModel):
@@ -35,7 +25,7 @@ class PackageSummaryResponse(BaseModel):
     """Response schema for GET /api/v1/package/{name}."""
 
     name: str
-    info: PackageInfo
+    info: dict[str, Any]
     # Deprecated by PyPI — may be removed in a future API response.
     # See: https://docs.pypi.org/api/json/
     releases: list[str] = []

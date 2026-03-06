@@ -7,6 +7,7 @@ business logic lives in the service layer (package_service.py).
 """
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from kingpi.dependencies import get_event_store, get_pypi_client
 from kingpi.schemas.event import EventType
@@ -30,21 +31,21 @@ async def get_package(
         raise HTTPException(status_code=404, detail=f"Package '{name}' not found")
 
 
-@router.get("/package/{name}/event/{event_type}/total")
+@router.get("/package/{name}/event/{event_type}/total", response_class=PlainTextResponse)
 async def get_event_total(
     name: str,
     event_type: EventType,
     store: EventStore = Depends(get_event_store),
 ):
     total = await store.get_total(name, event_type)
-    return {"total": total}
+    return str(total)
 
 
-@router.get("/package/{name}/event/{event_type}/last")
+@router.get("/package/{name}/event/{event_type}/last", response_class=PlainTextResponse)
 async def get_event_last(
     name: str,
     event_type: EventType,
     store: EventStore = Depends(get_event_store),
 ):
     last = await store.get_last(name, event_type)
-    return {"last": last.isoformat() if last else None}
+    return last.isoformat() if last else ""

@@ -64,6 +64,8 @@ async def test_get_package_success(test_client):
     assert data["info"]["version"] == "2.31.0"
     assert isinstance(data["releases"], list)
     assert "events" in data
+    # info should be the full PyPI dict, not a curated subset
+    assert isinstance(data["info"], dict)
 
 
 async def test_get_package_not_found_on_pypi(test_client):
@@ -78,31 +80,26 @@ async def test_get_package_not_found_on_pypi(test_client):
 
 
 async def test_get_package_event_total(test_client):
-    """GET /api/v1/package/requests/event/install/total returns {"total": N}."""
+    """GET /api/v1/package/requests/event/install/total returns bare integer."""
     response = await test_client.get("/api/v1/package/requests/event/install/total")
     assert response.status_code == 200
-    data = response.json()
-    assert "total" in data
-    # Verify the type, not just the presence — int is the correct type for a count
-    assert isinstance(data["total"], int)
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
+    assert response.text == "5"
 
 
 async def test_get_package_event_last(test_client):
-    """GET /api/v1/package/requests/event/install/last returns {"last": ...}."""
+    """GET /api/v1/package/requests/event/install/last returns bare timestamp or empty."""
     response = await test_client.get("/api/v1/package/requests/event/install/last")
     assert response.status_code == 200
-    data = response.json()
-    # "last" may be null (no events yet) or an ISO 8601 string — both are valid
-    assert "last" in data
+    assert response.headers["content-type"] == "text/plain; charset=utf-8"
 
 
 async def test_get_package_event_total_no_events(test_client):
-    """Returns {"total": 0} when no events recorded.
+    """Returns "0" when no events recorded.
 
     The mock uses `side_effect` to return 5 for "requests" and 0 for any
     other package (see conftest.py). This tests the zero-case contract.
     """
     response = await test_client.get("/api/v1/package/new-package/event/install/total")
     assert response.status_code == 200
-    data = response.json()
-    assert data["total"] == 0
+    assert response.text == "0"

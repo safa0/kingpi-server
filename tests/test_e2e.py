@@ -117,15 +117,15 @@ async def test_post_event_then_query_totals(e2e_client):
 
     r = await e2e_client.get("/api/v1/package/fastapi/event/install/total")
     assert r.status_code == 200
-    assert r.json()["total"] == 3
+    assert r.text == "3"
 
     r = await e2e_client.get("/api/v1/package/fastapi/event/install/last")
     assert r.status_code == 200
-    assert r.json()["last"] == "2026-03-03T08:00:00+00:00"
+    assert r.text == "2026-03-03T08:00:00+00:00"
 
     r = await e2e_client.get("/api/v1/package/fastapi/event/uninstall/total")
     assert r.status_code == 200
-    assert r.json()["total"] == 0
+    assert r.text == "0"
 
 
 async def test_post_event_nonexistent_package_rejected(e2e_client):
@@ -157,6 +157,7 @@ async def test_package_with_null_fields(e2e_client):
     r = await e2e_client.get("/api/v1/package/fastapi")
     assert r.status_code == 200
     data = r.json()
+    # Full PyPI info dict is passed through — these fields are null in the fake
     assert data["info"]["author"] is None
     assert data["info"]["license"] is None
     assert data["info"]["home_page"] is None
