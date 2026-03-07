@@ -15,11 +15,13 @@ The global `client` fixture only overrides `get_event_store`. These tests also
 need to mock `get_pypi_cache_client` so we don't make real HTTP calls to PyPI.
 Defining `test_client` locally keeps this setup self-contained.
 """
+import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from kingpi.app import create_app
 from kingpi.dependencies import get_event_store, get_pypi_cache_client
+from kingpi.services.pypi_client import PyPIUpstreamError
 
 
 # Realistic but minimal PyPI API response — used by the mock_pypi_client fixture
@@ -103,3 +105,21 @@ async def test_get_package_event_total_no_events(test_client):
     response = await test_client.get("/api/v1/package/new-package/event/install/total")
     assert response.status_code == 200
     assert response.text == "0"
+
+
+async def test_get_package_pypi_upstream_error(test_client, mock_pypi_client):
+    mock_pypi_client.fetch_package_info.side_effect = PyPIUpstreamError("requests", 503)
+    response = await test_client.get("/api/v1/package/requests")
+    assert response.status_code == 502
+
+
+async def test_get_package_pypi_timeout(test_client, mock_pypi_client):
+    mock_pypi_client.fetch_package_info.side_effect = httpx.TimeoutException("connection timed out")
+    response = await test_client.get("/api/v1/package/requests")
+    assert response.status_code == 504
+
+
+async def test_get_package_invalid_package_name(test_client, mock_pypi_client):
+    mock_pypi_client.fetch_package_info.side_effect = ValueError("Invalid package name: '_invalid_'")
+    response = await test_client.get("/api/v1/package/_invalid_")
+    assert response.status_code == 400

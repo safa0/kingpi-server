@@ -6,6 +6,7 @@ from PyPI and querying recorded event statistics. Routes are kept thin —
 business logic lives in the service layer (package_service.py).
 """
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse
 
@@ -15,7 +16,7 @@ from kingpi.schemas.package import PackageSummaryResponse
 from kingpi.services.event_store import EventStore
 from kingpi.services.package_service import get_package_summary
 from kingpi.services.pypi_cache_client import PackageInfoFetcher
-from kingpi.services.pypi_client import PackageNotFoundError
+from kingpi.services.pypi_client import PackageNotFoundError, PyPIUpstreamError
 
 router = APIRouter()
 
@@ -30,6 +31,12 @@ async def get_package(
         return await get_package_summary(name, pypi, store)
     except PackageNotFoundError:
         raise HTTPException(status_code=404, detail=f"Package '{name}' not found")
+    except PyPIUpstreamError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="PyPI request timed out")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/package/{name}/event/{event_type}/total", response_class=PlainTextResponse)
