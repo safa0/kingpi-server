@@ -21,7 +21,7 @@ graph LR
 ```mermaid
 graph TD
     subgraph API["API Layer (routes)"]
-        health["health.py<br/>GET /health"]
+        health["health.py<br/>GET /health<br/>GET /health/ready"]
         events["events.py<br/>POST /api/v1/event"]
         packages["packages.py<br/>GET /api/v1/package/{name}<br/>GET .../event/{type}/total<br/>GET .../event/{type}/last"]
     end
@@ -166,19 +166,26 @@ graph TD
 
     pg -->|set_event_store| DI
     cached -->|set_pypi_cache_client| DI
+    sf -->|set_session_factory| DI
+    redis -->|set_redis_client| DI
 
     subgraph DI["Dependencies (dependencies.py)"]
         get_es["get_event_store()"]
         get_pypi["get_pypi_cache_client()"]
+        get_sf["get_session_factory()"]
+        get_redis["get_redis_client()"]
     end
 
     subgraph Routes["Route Handlers"]
         r1["events.py"]
         r2["packages.py"]
+        r3["health.py"]
     end
 
     get_es -->|"Depends()"| r1
     get_es -->|"Depends()"| r2
     get_pypi -->|"Depends()"| r1
     get_pypi -->|"Depends()"| r2
+    get_sf -->|"Depends()"| r3
+    get_redis -->|"Depends()"| r3
 ```

@@ -45,7 +45,8 @@ uvicorn kingpi.app:app --reload
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness check |
+| `GET` | `/health` | Liveness probe |
+| `GET` | `/health/ready` | Readiness probe (checks DB + Redis) |
 | `POST` | `/api/v1/event` | Record install/uninstall event |
 | `GET` | `/api/v1/package/{name}` | Package info + event stats |
 | `GET` | `/api/v1/package/{name}/event/{type}/total` | Event count |
