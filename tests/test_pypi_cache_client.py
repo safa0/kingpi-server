@@ -123,3 +123,15 @@ async def test_upstream_error_not_cached_no_set(cached_client, mock_pypi, cache)
         await cached_client.fetch_package_info("pkg")
 
     cache.set.assert_not_awaited()
+
+
+async def test_corrupt_cache_treated_as_miss(mock_pypi, cache):
+    """Corrupt (non-JSON) cache data should be treated as a miss, not raise."""
+    cache.get.return_value = "not-valid-json{{{{"
+    cached_client = PyPICacheClient(client=mock_pypi, cache=cache, ttl_seconds=300)
+
+    result = await cached_client.fetch_package_info("requests")
+
+    assert result == SAMPLE_DATA
+    cache.delete.assert_awaited_once_with("pypi:package:requests")
+    mock_pypi.fetch_package_info.assert_awaited_once_with("requests")
